@@ -10,14 +10,13 @@ namespace UnityEssentials
     {
         private const float LineHeight = 22f;
         private const float Padding = 4f;
-        private const float MinWndowWidth = 250f;
-        private const float MaxWindowHeight = 1200f;
+        private const float MinWindowWidth = 150f;
+        private const float MaxWindowHeight = 1500f;
 
         private string _searchString = "";
         private Vector2 _scrollPosition;
         private string[] _enumNames;
         private Array _enumValues;
-        private Type _enumType;
         private int _currentIndex;
         private int _hoverIndex = -1;
         private Action<Enum> _onValueSelected;
@@ -34,7 +33,6 @@ namespace UnityEssentials
         public static void Show(Rect buttonRect, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
             var window = CreateInstance<EnumSearchPopup>();
-            window._enumType = enumType;
             window._enumValues = Enum.GetValues(enumType);
             window._enumNames = Enum.GetNames(enumType);
             window._currentIndex = Array.IndexOf(window._enumValues, currentValue);
@@ -43,7 +41,7 @@ namespace UnityEssentials
             window._hoverIndex = window._currentIndex;
 
             Vector2 windowPosition = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
-            float availableHeight = Screen.currentResolution.height - windowPosition.y - 30f;
+            float availableHeight = Screen.currentResolution.height - windowPosition.y;
 
             float contentHeight = Mathf.Min(
                 window.CalculateContentHeight(),
@@ -53,10 +51,10 @@ namespace UnityEssentials
             window.position = new Rect(
                 windowPosition.x - Padding,
                 windowPosition.y,
-                Mathf.Max(buttonRect.width + Padding * 2, MinWndowWidth),
+                Mathf.Max(buttonRect.width + Padding * 2, MinWindowWidth),
                 contentHeight + Padding * 2);
 
-            Vector2 windowSize = new Vector2(Mathf.Max(buttonRect.width, MinWndowWidth), contentHeight);
+            Vector2 windowSize = new Vector2(Mathf.Max(buttonRect.width, MinWindowWidth), contentHeight);
             window.ShowAsDropDown(GUIUtility.GUIToScreenRect(buttonRect), windowSize);
             window.Focus();
         }
@@ -232,7 +230,7 @@ namespace UnityEssentials
             var itemCount = GetFilteredIndices().Count;
             return LineHeight + // Search field height
                    (itemCount * LineHeight) + // Items height
-                   Padding * 4; // Additional padding
+                   1; // Additional padding
         }
 
         private List<int> GetFilteredIndices()
