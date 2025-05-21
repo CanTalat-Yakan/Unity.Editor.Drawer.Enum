@@ -51,8 +51,38 @@ namespace UnityEssentials
                 EditorGUI.LabelField(labelPosition, label);
             }
 
-            if (EditorGUI.DropdownButton(buttonPosition, new GUIContent(currentValue.ToString()), FocusType.Keyboard))
-                EnumSearchPopup.Show(buttonPosition, property.serializedObject.targetObject, property.propertyPath, enumType, currentValue, enumNames);
+            EnumPopup(buttonPosition, currentValue, enumType, property);
+        }
+
+        public static void EnumPopup(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
+        {
+            var buttonText = ObjectNames.NicifyVariableName(currentValue.ToString());
+            if (EditorGUI.DropdownButton(position, new GUIContent(buttonText), FocusType.Keyboard))
+                EnumSearchPopup.Show(position, enumType, currentValue, onValueChanged);
+        }
+
+        public static void EnumPopup(Rect position, Enum currentValue, Type enumType, SerializedProperty property) =>
+            EnumPopup(position, currentValue, enumType, (newValue) => SetEnumValue(property, newValue, enumType));
+
+        public static void EnumPopup<T>(Rect position, Enum currentValue, Action<T> onValueChanged) where T : Enum =>
+            EnumPopup(position, currentValue, typeof(T), (newValue) => onValueChanged((T)newValue));
+
+        public static void EnumPopup<T>(Rect position, Enum currentValue) where T : Enum =>
+            EnumPopup<T>(position, currentValue, (newValue) => currentValue = newValue);
+
+        public static void SetEnumValue(SerializedProperty property, Enum newValue, Type enumType)
+        {
+            var newIndex = Array.IndexOf(Enum.GetValues(enumType), newValue);
+            SetEnumValue(property, newIndex);
+        }
+
+        public static void SetEnumValue(SerializedProperty property, int newIndex)
+        {
+            if (property != null && property.enumValueIndex != newIndex)
+            {
+                property.enumValueIndex = newIndex;
+                property.serializedObject.ApplyModifiedProperties();
+            }
         }
     }
 }

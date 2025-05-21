@@ -18,50 +18,63 @@ namespace UnityEssentials
         private string[] enumNames;
         private Array enumValues;
         private Type enumType;
-        private UnityEngine.Object targetObject;
-        private string propertyPath;
         private int currentIndex;
         private int hoverIndex = -1;
+        private Action<Enum> onValueSelected;
 
-        public static void Show(Rect buttonRect, UnityEngine.Object target, string path, Type type, Enum currentValue, string[] names)
+        private static readonly Color borderColorPro = new Color(0.11f, 0.11f, 0.11f);
+        private static readonly Color borderColorLight = new Color(0.51f, 0.51f, 0.51f);
+        private static readonly Color highlightColorPro = new Color(0.24f, 0.48f, 0.9f);
+        private static readonly Color highlightColorLight = new Color(0.22f, 0.44f, 0.9f);
+
+        private bool hasInitializedScrollPosition;
+
+        public static void Show(Rect buttonRect, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
             var window = CreateInstance<EnumSearchPopup>();
-            window.targetObject = target;
-            window.propertyPath = path;
-            window.enumType = type;
-            window.enumValues = Enum.GetValues(type);
-            window.enumNames = names;
+            window.enumType = enumType;
+            window.enumValues = Enum.GetValues(enumType);
+            window.enumNames = Enum.GetNames(enumType);
             window.currentIndex = Array.IndexOf(window.enumValues, currentValue);
+            window.onValueSelected = onValueSelected;
             window.searchString = "";
             window.hoverIndex = window.currentIndex;
 
-            var windowPos = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
-            var availableHeight = Screen.currentResolution.height - windowPos.y - 30f;
+            Vector2 windowPosition = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
+            float availableHeight = Screen.currentResolution.height - windowPosition.y - 30f;
 
-            var contentHeight = Mathf.Min(
+            float contentHeight = Mathf.Min(
                 window.CalculateContentHeight(),
                 MAX_WINDOW_HEIGHT,
                 availableHeight);
 
             window.position = new Rect(
-                windowPos.x - PADDING,
-                windowPos.y,
+                windowPosition.x - PADDING,
+                windowPosition.y,
                 Mathf.Max(buttonRect.width + PADDING * 2, MIN_WINDOW_WIDTH),
                 contentHeight + PADDING * 2);
 
-            var windowSize = new Vector2( Mathf.Max(buttonRect.width, MIN_WINDOW_WIDTH), contentHeight);
-            window.ShowAsDropDown( GUIUtility.GUIToScreenRect(buttonRect), windowSize);
+            Vector2 windowSize = new Vector2(Mathf.Max(buttonRect.width, MIN_WINDOW_WIDTH), contentHeight);
+            window.ShowAsDropDown(GUIUtility.GUIToScreenRect(buttonRect), windowSize);
             window.Focus();
         }
 
         public void OnGUI()
         {
             HandleKeyboard();
-            DrawSearchField();
-            DrawEnumList();
+            HandleMouseMovement();
 
-            if (Event.current.type == EventType.MouseMove)
-                Repaint();
+            DrawBorder(() =>
+            {
+                DrawSearchField();
+                DrawEnumList();
+            });
+
+            if (!hasInitializedScrollPosition)
+            {
+                ScrollToCurrentItem();
+                hasInitializedScrollPosition = true;
+            }
         }
 
         public void OnLostFocus() =>
@@ -100,6 +113,38 @@ namespace UnityEssentials
             }
         }
 
+        private void HandleMouseMovement()
+        {
+            if (Event.current.type == EventType.MouseMove || Event.current.type == EventType.Layout)
+            {
+                var mousePosition = Event.current.mousePosition;
+                var contentPosition = new Rect(0, LINE_HEIGHT + PADDING, position.width, position.height - (LINE_HEIGHT + PADDING));
+                if (contentPosition.Contains(mousePosition))
+                {
+                    var filtered = GetFilteredIndices();
+                    float scrollY = mousePosition.y - LINE_HEIGHT + scrollPosition.y;
+                    int itemIndex = Mathf.FloorToInt(scrollY / LINE_HEIGHT);
+                    hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
+                    Repaint();
+                }
+                else if (hoverIndex != -1)
+                {
+                    hoverIndex = -1;
+                    Repaint();
+                }
+            }
+        }
+
+        private void ScrollToCurrentItem()
+        {
+            var filtered = GetFilteredIndices();
+            if (filtered.Contains(currentIndex))
+            {
+                hoverIndex = currentIndex;
+                ScrollToItem(currentIndex);
+            }
+        }
+
         private void ScrollToItem(int index)
         {
             var filtered = GetFilteredIndices();
@@ -107,68 +152,74 @@ namespace UnityEssentials
             scrollPosition.y = Mathf.Clamp(pos - position.height / 2, 0, pos);
         }
 
+        private void DrawBorder(Action drawContent)
+        {
+            var borderColor = EditorGUIUtility.isProSkin ? borderColorPro : borderColorLight;
+            EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), borderColor);
+
+            var backgroundColor = EditorGUIUtility.isProSkin ? new Color(0.22f, 0.22f, 0.22f) : new Color(0.76f, 0.76f, 0.76f);
+            EditorGUI.DrawRect(new Rect(1, 1, position.width - 2, position.height - 2), backgroundColor);
+
+            GUILayout.BeginArea(new Rect(1, 1, position.width - 2, position.height - 2));
+            drawContent();
+            GUILayout.EndArea();
+        }
+
         private void DrawEnumList()
         {
             var filteredIndices = GetFilteredIndices();
+            var listHeight = filteredIndices.Count * LINE_HEIGHT;
 
-            // Background color
-            var listPosition = GUILayoutUtility.GetRect(0, 0, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-            EditorGUI.DrawRect(listPosition, EditorGUIUtility.isProSkin
-                ? new Color(0.22f, 0.22f, 0.22f)
-                : new Color(0.76f, 0.76f, 0.76f));
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
 
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition);
+            for (int i = 0; i < filteredIndices.Count; i++)
+            {
+                var index = filteredIndices[i];
+                var rect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(LINE_HEIGHT));
 
-            foreach (int index in filteredIndices)
-                DrawEnumLabel(index);
+                if (Event.current.type == EventType.Repaint)
+                {
+                    bool isSelected = index == currentIndex;
+                    bool isHovered = index == hoverIndex;
+                    DrawItemBackground(rect, isSelected, isHovered);
+                    DrawItemText(rect, enumNames[index], isSelected || isHovered);
+                }
+
+                if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+                {
+                    SetEnumValue(index);
+                    Close();
+                }
+            }
 
             GUILayout.EndScrollView();
         }
-
-        private void DrawEnumLabel(int index)
+        private void DrawItemBackground(Rect rect, bool isSelected, bool isHovered)
         {
-            var position = EditorGUILayout.GetControlRect(
-                GUILayout.Height(LINE_HEIGHT),
-                GUILayout.ExpandWidth(true));
-
-            var isSelected = index == currentIndex;
-            var isHovered = position.Contains(Event.current.mousePosition) || index == hoverIndex;
-
-            // Handle mouse interaction
-            if (Event.current.type == EventType.MouseDown && position.Contains(Event.current.mousePosition))
+            if (isSelected || isHovered)
             {
-                SetEnumValue(index);
-                Close();
+                var color = EditorGUIUtility.isProSkin ? highlightColorPro : highlightColorLight;
+                EditorGUI.DrawRect(rect, color);
             }
+        }
 
-            if (Event.current.type == EventType.Repaint)
+        private void DrawItemText(Rect rect, string text, bool highlighted)
+        {
+            var style = new GUIStyle(EditorStyles.label)
             {
-                var highlightColor = EditorGUIUtility.isProSkin
-                    ? new Color(0.24f, 0.48f, 0.9f)
-                    : new Color(0.22f, 0.44f, 0.9f);
+                alignment = TextAnchor.MiddleLeft,
+                padding = new RectOffset(10, 0, 0, 0)
+            };
 
-                if (isHovered || isSelected)
-                    EditorGUI.DrawRect(position, highlightColor);
-
-                var labelStyle = new GUIStyle(EditorStyles.label)
-                {
-                    alignment = TextAnchor.MiddleLeft,
-                    padding = new RectOffset(10, 0, 0, 0),
-                    normal = { textColor = isHovered || isSelected ? Color.white : EditorStyles.label.normal.textColor }
-                };
-
-                GUI.Label(position, ObjectNames.NicifyVariableName(enumNames[index]), labelStyle);
-            }
+            style.normal.textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor;
+            GUI.Label(rect, ObjectNames.NicifyVariableName(text), style);
         }
 
         private void DrawSearchField()
         {
             GUILayout.BeginHorizontal(EditorStyles.toolbar);
-            GUILayout.Space(PADDING);
             GUI.SetNextControlName("SearchField");
-            searchString = GUILayout.TextField(searchString, EditorStyles.toolbarSearchField,
-                GUILayout.Height(LINE_HEIGHT));
-            GUILayout.Space(PADDING);
+            searchString = GUILayout.TextField(searchString, EditorStyles.toolbarSearchField);
             GUILayout.EndHorizontal();
             EditorGUI.FocusTextInControl("SearchField");
         }
@@ -195,13 +246,9 @@ namespace UnityEssentials
 
         private void SetEnumValue(int index)
         {
-            var serializedObject = new SerializedObject(targetObject);
-            var property = serializedObject.FindProperty(propertyPath);
-            if (property != null && property.enumValueIndex != index)
-            {
-                property.enumValueIndex = index;
-                serializedObject.ApplyModifiedProperties();
-            }
+            Enum selectedValue = (Enum)enumValues.GetValue(index);
+            onValueSelected?.Invoke(selectedValue);
+            Close();
         }
     }
 }
