@@ -8,7 +8,7 @@ namespace UnityEssentials
 {
     public class EnumSearchPopup : EditorWindow
     {
-        private const float LINE_HEIGHT = 20f;
+        private const float LINE_HEIGHT = 22f;
         private const float PADDING = 4f;
         private const float MIN_WINDOW_WIDTH = 250f;
         private const float MAX_WINDOW_HEIGHT = 600f;
@@ -21,10 +21,11 @@ namespace UnityEssentials
         private UnityEngine.Object targetObject;
         private string propertyPath;
         private int currentIndex;
+        private int hoverIndex = -1;
 
         public static void Show(Rect buttonRect, UnityEngine.Object target, string path, Type type, Enum currentValue, string[] names)
         {
-            EnumSearchPopup window = CreateInstance<EnumSearchPopup>();
+            var window = CreateInstance<EnumSearchPopup>();
             window.targetObject = target;
             window.propertyPath = path;
             window.enumType = type;
@@ -32,23 +33,21 @@ namespace UnityEssentials
             window.enumNames = names;
             window.currentIndex = Array.IndexOf(window.enumValues, currentValue);
             window.searchString = "";
+            window.hoverIndex = window.currentIndex;
 
-            Vector2 windowPos = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
-            float availableHeight = Screen.currentResolution.height - windowPos.y - 30f;
+            var windowPos = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
+            var availableHeight = Screen.currentResolution.height - windowPos.y - 30f;
 
-            // Calculate dynamic window size
-            float contentHeight = Mathf.Min(
+            var contentHeight = Mathf.Min(
                 window.CalculateContentHeight(),
                 MAX_WINDOW_HEIGHT,
-                availableHeight
-            );
+                availableHeight);
 
             window.position = new Rect(
                 windowPos.x - PADDING,
                 windowPos.y,
                 Mathf.Max(buttonRect.width + PADDING * 2, MIN_WINDOW_WIDTH),
-                contentHeight + PADDING * 2
-            );
+                contentHeight + PADDING * 2);
 
             window.ShowPopup();
             window.Focus();
@@ -59,33 +58,102 @@ namespace UnityEssentials
             HandleKeyboard();
             DrawSearchField();
             DrawEnumList();
-        }
 
-        public void OnLostFocus() =>
-            Close();
-
-        private float CalculateContentHeight()
-        {
-            int itemCount = GetFilteredIndices().Count;
-            return LINE_HEIGHT + // Search field height
-                   (itemCount * LINE_HEIGHT) + // Items height
-                   PADDING * 4; // Additional padding
+            if (Event.current.type == EventType.MouseMove)
+                Repaint();
         }
 
         private void HandleKeyboard()
         {
             if (Event.current.type == EventType.KeyDown)
             {
-                if (Event.current.keyCode == KeyCode.Escape)
+                var filtered = GetFilteredIndices();
+                var current = filtered.IndexOf(hoverIndex);
+
+                switch (Event.current.keyCode)
                 {
-                    Close();
+                    case KeyCode.DownArrow:
+                        hoverIndex = filtered[Mathf.Clamp(current + 1, 0, filtered.Count - 1)];
+                        Event.current.Use();
+                        ScrollToItem(hoverIndex);
+                        break;
+
+                    case KeyCode.UpArrow:
+                        hoverIndex = filtered[Mathf.Clamp(current - 1, 0, filtered.Count - 1)];
+                        Event.current.Use();
+                        ScrollToItem(hoverIndex);
+                        break;
+
+                    case KeyCode.Return when filtered.Count > 0:
+                        SetEnumValue(hoverIndex);
+                        Close();
+                        break;
+
+                    case KeyCode.Escape:
+                        Close();
+                        break;
                 }
-                else if (Event.current.keyCode == KeyCode.Return &&
-                         GetFilteredIndices().Count == 1)
+            }
+        }
+
+        private void ScrollToItem(int index)
+        {
+            var filtered = GetFilteredIndices();
+            var pos = filtered.IndexOf(index) * LINE_HEIGHT;
+            scrollPosition.y = Mathf.Clamp(pos - position.height / 2, 0, pos);
+        }
+
+        private void DrawEnumList()
+        {
+            var filteredIndices = GetFilteredIndices();
+
+            //// Background color
+            //var listPosition = GUILayoutUtility.GetRect(0, 0, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            //EditorGUI.DrawRect(listPosition, EditorGUIUtility.isProSkin
+            //    ? new Color(0.22f, 0.22f, 0.22f)
+            //    : new Color(0.76f, 0.76f, 0.76f));
+
+            scrollPosition = GUILayout.BeginScrollView(scrollPosition);
+
+            foreach (int index in filteredIndices)
+                DrawEnumLabel(index);
+
+            GUILayout.EndScrollView();
+        }
+
+        private void DrawEnumLabel(int index)
+        {
+            var position = EditorGUILayout.GetControlRect(
+                GUILayout.Height(LINE_HEIGHT),
+                GUILayout.ExpandWidth(true));
+
+            var isSelected = index == currentIndex;
+            var isHovered = position.Contains(Event.current.mousePosition) || index == hoverIndex;
+
+            // Handle mouse interaction
+            if (Event.current.type == EventType.MouseDown && position.Contains(Event.current.mousePosition))
+            {
+                SetEnumValue(index);
+                Close();
+            }
+
+            if (Event.current.type == EventType.Repaint)
+            {
+                var highlightColor = EditorGUIUtility.isProSkin
+                    ? new Color(0.24f, 0.48f, 0.9f)
+                    : new Color(0.22f, 0.44f, 0.9f);
+
+                if (isHovered || isSelected)
+                    EditorGUI.DrawRect(position, highlightColor);
+
+                var labelStyle = new GUIStyle(EditorStyles.label)
                 {
-                    SetEnumValue(GetFilteredIndices()[0]);
-                    Close();
-                }
+                    alignment = TextAnchor.MiddleLeft,
+                    padding = new RectOffset(10, 0, 0, 0),
+                    normal = { textColor = Color.white }
+                };
+
+                GUI.Label(position, ObjectNames.NicifyVariableName(enumNames[index]), labelStyle);
             }
         }
 
@@ -101,98 +169,36 @@ namespace UnityEssentials
             EditorGUI.FocusTextInControl("SearchField");
         }
 
-        private void DrawEnumList()
+        private float CalculateContentHeight()
         {
-            List<int> filteredIndices = GetFilteredIndices();
-
-            GUILayout.Space(PADDING);
-            scrollPosition = GUILayout.BeginScrollView(scrollPosition,
-                GUILayout.ExpandWidth(true));
-
-            foreach (int index in filteredIndices)
-            {
-                DrawEnumButton(index);
-            }
-
-            GUILayout.EndScrollView();
-            GUILayout.Space(PADDING);
-        }
-
-        private void DrawEnumButton(int index)
-        {
-            Rect rect = EditorGUILayout.GetControlRect(
-                GUILayout.Height(LINE_HEIGHT),
-                GUILayout.ExpandWidth(true)
-            );
-
-            if (Event.current.type == EventType.Repaint)
-            {
-                bool isSelected = index == currentIndex;
-                var style = isSelected ?
-                    EditorStyles.miniButton :
-                    EditorStyles.miniButton;
-
-                style.Draw(rect, GUIContent.none, false, false, isSelected, false);
-            }
-
-            Rect labelRect = rect;
-            labelRect.xMin += PADDING * 2;
-            labelRect.xMax -= PADDING * 2;
-
-            GUI.Label(labelRect, enumNames[index], GetLabelStyle(index == currentIndex));
-
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
-            {
-                SetEnumValue(index);
-                Close();
-            }
+            var itemCount = GetFilteredIndices().Count;
+            return LINE_HEIGHT + // Search field height
+                   (itemCount * LINE_HEIGHT) + // Items height
+                   PADDING * 4; // Additional padding
         }
 
         private List<int> GetFilteredIndices()
         {
-            string lowerSearch = searchString.ToLower();
-            List<int> indices = new List<int>();
+            var lowerSearch = searchString.ToLower();
+            var indices = new List<int>();
 
             for (int i = 0; i < enumNames.Length; i++)
-            {
-                if (string.IsNullOrEmpty(searchString) ||
-                    enumNames[i].ToLower().Contains(lowerSearch))
-                {
+                if (string.IsNullOrEmpty(searchString) || enumNames[i].ToLower().Contains(lowerSearch))
                     indices.Add(i);
-                }
-            }
-            return indices;
-        }
 
-        private GUIStyle GetLabelStyle(bool isSelected)
-        {
-            var style = new GUIStyle(EditorStyles.miniLabel)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontStyle = isSelected ? FontStyle.Bold : FontStyle.Normal,
-                padding = new RectOffset((int)(PADDING * 2), 0, 0, 0)
-            };
-            return style;
+            return indices;
         }
 
         private void SetEnumValue(int index)
         {
-            SerializedObject so = new SerializedObject(targetObject);
-            SerializedProperty prop = so.FindProperty(propertyPath);
-            if (prop != null && prop.enumValueIndex != index)
+            var serializedObject = new SerializedObject(targetObject);
+            var property = serializedObject.FindProperty(propertyPath);
+            if (property != null && property.enumValueIndex != index)
             {
-                prop.enumValueIndex = index;
-                so.ApplyModifiedProperties();
+                property.enumValueIndex = index;
+                serializedObject.ApplyModifiedProperties();
             }
         }
-
-
-
-
-
-
-
     }
-
 }
 #endif
