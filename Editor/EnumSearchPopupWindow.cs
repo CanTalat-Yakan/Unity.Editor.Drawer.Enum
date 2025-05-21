@@ -13,7 +13,7 @@ namespace UnityEssentials
         private const float MinWindowWidth = 150f;
         private const float MaxWindowHeight = 1500f;
 
-        private string _searchString = "";
+        private string _searchString = string.Empty;
         private Vector2 _scrollPosition;
         private string[] _enumNames;
         private Array _enumValues;
@@ -37,7 +37,7 @@ namespace UnityEssentials
             window._enumNames = Enum.GetNames(enumType);
             window._currentIndex = Array.IndexOf(window._enumValues, currentValue);
             window._onValueSelected = onValueSelected;
-            window._searchString = "";
+            window._searchString = string.Empty;
             window._hoverIndex = window._currentIndex;
 
             Vector2 windowPosition = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
@@ -98,7 +98,7 @@ namespace UnityEssentials
                 if (filtered.Count == 0)
                     return;
 
-                int current = filtered.IndexOf(_hoverIndex);
+                var current = filtered.IndexOf(_hoverIndex);
                 current = Mathf.Clamp(current, 0, filtered.Count - 1);
 
                 switch (Event.current.keyCode)
@@ -139,12 +139,13 @@ namespace UnityEssentials
                 if (_previousMousePosition == Event.current.mousePosition)
                     return;
                 _previousMousePosition = Event.current.mousePosition;
+
                 var contentPosition = new Rect(0, LineHeight, position.width, position.height - (LineHeight));
                 if (contentPosition.Contains(Event.current.mousePosition))
                 {
                     var filtered = GetFilteredIndices();
-                    float scrollY = _previousMousePosition.y - LineHeight + _scrollPosition.y;
-                    int itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
+                    var scrollY = _previousMousePosition.y - LineHeight + _scrollPosition.y;
+                    var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
                     _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
                     Repaint();
                 }
@@ -164,12 +165,12 @@ namespace UnityEssentials
         private void ScrollToItem(int index)
         {
             var filtered = GetFilteredIndices();
-            int itemIndex = filtered.IndexOf(index);
+            var itemIndex = filtered.IndexOf(index);
             if (itemIndex == -1) return;
 
-            float itemPosition = itemIndex * LineHeight;
-            float scrollViewHeight = position.height - LineHeight - 2 * Padding; // Account for search field and padding
-            float maxScroll = Mathf.Max(0, (filtered.Count * LineHeight) - scrollViewHeight);
+            var itemPosition = itemIndex * LineHeight;
+            var scrollViewHeight = position.height - LineHeight - 2 * Padding; // Account for search field and padding
+            var maxScroll = Mathf.Max(0, (filtered.Count * LineHeight) - scrollViewHeight);
 
             // Center the item in the scroll view
             _scrollPosition.y = Mathf.Clamp(itemPosition - (scrollViewHeight / 2), 0, maxScroll);
@@ -202,8 +203,8 @@ namespace UnityEssentials
 
                 if (Event.current.type == EventType.Repaint)
                 {
-                    bool isSelected = index == _currentIndex;
-                    bool isHovered = index == _hoverIndex;
+                    var isSelected = index == _currentIndex;
+                    var isHovered = index == _hoverIndex;
                     DrawItemBackground(rect, isSelected || isHovered);
                     DrawItemText(rect, _enumNames[index], isSelected || isHovered);
                 }
