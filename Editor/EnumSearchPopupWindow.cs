@@ -210,10 +210,11 @@ namespace UnityEssentials
             var style = new GUIStyle(EditorStyles.label)
             {
                 alignment = TextAnchor.MiddleLeft,
-                padding = new RectOffset(10, 0, 0, 0)
+                padding = new RectOffset(10, 0, 0, 0),
+                normal = { textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor },
+                hover = { textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor }
             };
 
-            style.normal.textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor;
             GUI.Label(rect, ObjectNames.NicifyVariableName(text), style);
         }
 
