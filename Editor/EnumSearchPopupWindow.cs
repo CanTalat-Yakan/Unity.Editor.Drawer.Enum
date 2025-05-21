@@ -49,7 +49,8 @@ namespace UnityEssentials
                 Mathf.Max(buttonRect.width + PADDING * 2, MIN_WINDOW_WIDTH),
                 contentHeight + PADDING * 2);
 
-            window.ShowPopup();
+            var windowSize = new Vector2( Mathf.Max(buttonRect.width, MIN_WINDOW_WIDTH), contentHeight);
+            window.ShowAsDropDown( GUIUtility.GUIToScreenRect(buttonRect), windowSize);
             window.Focus();
         }
 
@@ -62,6 +63,9 @@ namespace UnityEssentials
             if (Event.current.type == EventType.MouseMove)
                 Repaint();
         }
+
+        public void OnLostFocus() =>
+            Close();
 
         private void HandleKeyboard()
         {
@@ -107,11 +111,11 @@ namespace UnityEssentials
         {
             var filteredIndices = GetFilteredIndices();
 
-            //// Background color
-            //var listPosition = GUILayoutUtility.GetRect(0, 0, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-            //EditorGUI.DrawRect(listPosition, EditorGUIUtility.isProSkin
-            //    ? new Color(0.22f, 0.22f, 0.22f)
-            //    : new Color(0.76f, 0.76f, 0.76f));
+            // Background color
+            var listPosition = GUILayoutUtility.GetRect(0, 0, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            EditorGUI.DrawRect(listPosition, EditorGUIUtility.isProSkin
+                ? new Color(0.22f, 0.22f, 0.22f)
+                : new Color(0.76f, 0.76f, 0.76f));
 
             scrollPosition = GUILayout.BeginScrollView(scrollPosition);
 
@@ -150,7 +154,7 @@ namespace UnityEssentials
                 {
                     alignment = TextAnchor.MiddleLeft,
                     padding = new RectOffset(10, 0, 0, 0),
-                    normal = { textColor = Color.white }
+                    normal = { textColor = isHovered || isSelected ? Color.white : EditorStyles.label.normal.textColor }
                 };
 
                 GUI.Label(position, ObjectNames.NicifyVariableName(enumNames[index]), labelStyle);
