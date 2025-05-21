@@ -22,8 +22,7 @@ namespace UnityEssentials
         private string propertyPath;
         private int currentIndex;
 
-        public static void Show(Rect buttonRect, UnityEngine.Object target, string path,
-                              Type type, Enum currentValue, string[] names)
+        public static void Show(Rect buttonRect, UnityEngine.Object target, string path, Type type, Enum currentValue, string[] names)
         {
             EnumSearchPopup window = CreateInstance<EnumSearchPopup>();
             window.targetObject = target;
@@ -55,19 +54,22 @@ namespace UnityEssentials
             window.Focus();
         }
 
+        public void OnGUI()
+        {
+            HandleKeyboard();
+            DrawSearchField();
+            DrawEnumList();
+        }
+
+        public void OnLostFocus() =>
+            Close();
+
         private float CalculateContentHeight()
         {
             int itemCount = GetFilteredIndices().Count;
             return LINE_HEIGHT + // Search field height
                    (itemCount * LINE_HEIGHT) + // Items height
                    PADDING * 4; // Additional padding
-        }
-
-        void OnGUI()
-        {
-            HandleKeyboard();
-            DrawSearchField();
-            DrawEnumList();
         }
 
         private void HandleKeyboard()
@@ -116,22 +118,6 @@ namespace UnityEssentials
             GUILayout.Space(PADDING);
         }
 
-        private List<int> GetFilteredIndices()
-        {
-            string lowerSearch = searchString.ToLower();
-            List<int> indices = new List<int>();
-
-            for (int i = 0; i < enumNames.Length; i++)
-            {
-                if (string.IsNullOrEmpty(searchString) ||
-                    enumNames[i].ToLower().Contains(lowerSearch))
-                {
-                    indices.Add(i);
-                }
-            }
-            return indices;
-        }
-
         private void DrawEnumButton(int index)
         {
             Rect rect = EditorGUILayout.GetControlRect(
@@ -162,6 +148,22 @@ namespace UnityEssentials
             }
         }
 
+        private List<int> GetFilteredIndices()
+        {
+            string lowerSearch = searchString.ToLower();
+            List<int> indices = new List<int>();
+
+            for (int i = 0; i < enumNames.Length; i++)
+            {
+                if (string.IsNullOrEmpty(searchString) ||
+                    enumNames[i].ToLower().Contains(lowerSearch))
+                {
+                    indices.Add(i);
+                }
+            }
+            return indices;
+        }
+
         private GUIStyle GetLabelStyle(bool isSelected)
         {
             var style = new GUIStyle(EditorStyles.miniLabel)
@@ -184,10 +186,12 @@ namespace UnityEssentials
             }
         }
 
-        void OnLostFocus()
-        {
-            Close();
-        }
+
+
+
+
+
+
     }
 
 }
