@@ -57,7 +57,9 @@ namespace UnityEssentials
         public static void EnumPopup(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
         {
             var buttonText = ObjectNames.NicifyVariableName(currentValue.ToString());
-            if (EditorGUI.DropdownButton(position, new GUIContent(buttonText), FocusType.Keyboard))
+            var buttonClicked = GUI.Button(position, new GUIContent(buttonText), EditorStyles.popup);
+            var keyboardClicked = InspectorFocusedHelper.ProcessKeyboardClick(position);
+            if (buttonClicked || keyboardClicked)
                 EnumSearchPopup.Show(position, enumType, currentValue, onValueChanged);
         }
 

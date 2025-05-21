@@ -57,6 +57,7 @@ namespace UnityEssentials
             Vector2 windowSize = new Vector2(Mathf.Max(buttonRect.width, MinWindowWidth), contentHeight);
             window.ShowAsDropDown(GUIUtility.GUIToScreenRect(buttonRect), windowSize);
             window.Focus();
+            window.ScrollToCurrentItem();
         }
 
         public void OnGUI()
@@ -78,12 +79,6 @@ namespace UnityEssentials
                 _hoverIndex = filtered.Count > 0 ? filtered[0] : -1;
                 if (_hoverIndex != -1)
                     ScrollToItem(_hoverIndex);
-            }
-
-            if (!hasInitializedScrollPosition)
-            {
-                ScrollToCurrentItem();
-                hasInitializedScrollPosition = true;
             }
         }
 
