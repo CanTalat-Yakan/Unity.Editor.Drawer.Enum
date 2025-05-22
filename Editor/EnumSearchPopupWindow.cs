@@ -63,7 +63,7 @@ namespace UnityEssentials
         public void OnGUI()
         {
             string previousSearch = _searchString;
-            HandleKeyboard();
+            HandleKeyboardInput();
             HandleMouseMovement();
 
             DrawBorder(() =>
@@ -85,7 +85,7 @@ namespace UnityEssentials
         public void OnLostFocus() =>
             Close();
 
-        private void HandleKeyboard()
+        private void HandleKeyboardInput()
         {
             if (Event.current.type == EventType.KeyDown)
             {
@@ -114,7 +114,7 @@ namespace UnityEssentials
                         Repaint();
                         break;
 
-                    case KeyCode.Return when filtered.Count > 0:
+                    case KeyCode.Return:
                         SetEnumValue(_hoverIndex);
                         Close();
                         break;
