@@ -21,9 +21,6 @@ namespace UnityEssentials
         /// <remarks>If the property represents an enum type, a searchable popup is displayed to allow
         /// users to select an enum value. If an error occurs or the property is not an enum, the default property field
         /// is rendered instead.</remarks>
-        /// <param name="position">The rectangle on the screen to use for the property GUI.</param>
-        /// <param name="property">The serialized property to render.</param>
-        /// <param name="label">The label to display alongside the property field.</param>
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
