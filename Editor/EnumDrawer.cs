@@ -86,8 +86,8 @@ namespace UnityEssentials
             if (label != GUIContent.none)
             {
                 labelPosition.width = EditorGUIUtility.labelWidth;
-                buttonPosition.x += EditorGUIUtility.labelWidth + 2;
-                buttonPosition.width -= EditorGUIUtility.labelWidth + 7;
+                buttonPosition.x += EditorGUIUtility.labelWidth;
+                buttonPosition.width -= EditorGUIUtility.labelWidth;
                 EditorGUI.LabelField(labelPosition, label);
             }
 

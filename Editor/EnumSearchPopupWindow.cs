@@ -390,6 +390,7 @@ namespace UnityEssentials
             {
                 Enum selectedValue = (Enum)_enumValues.GetValue(index);
                 _onValueSelected?.Invoke(selectedValue);
+                InspectorHook.InvokePostProcess();
                 Close();
             }
             catch (Exception) { }
