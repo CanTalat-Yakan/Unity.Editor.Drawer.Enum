@@ -63,8 +63,12 @@ namespace UnityEssentials
         /// <param name="enumType">The type of the enumeration to which the property belongs. Must be a valid enumeration type.</param>
         /// <param name="property">The serialized property containing the enumeration value. The property must represent an enumeration field.</param>
         /// <returns>An <see cref="Enum"/> instance representing the current value of the enumeration property.</returns>
-        private Enum GetCurrentValue(Type enumType, SerializedProperty property) =>
-            (Enum)Enum.ToObject(enumType, property.enumValueIndex);
+        private Enum GetCurrentValue(Type enumType, SerializedProperty property)
+        {
+            // Use the enum name at the current index to get the value
+            string enumName = property.enumNames[property.enumValueIndex];
+            return (Enum)Enum.Parse(enumType, enumName);
+        }
 
         /// <summary>
         /// Displays a popup UI element for selecting an enumeration value.
@@ -164,7 +168,9 @@ namespace UnityEssentials
         /// <param name="enumType">The type of the enumeration. This must match the type of the serialized property.</param>
         public static void SetEnumValue(SerializedProperty property, Enum newValue, Type enumType)
         {
-            var newIndex = Array.IndexOf(Enum.GetValues(enumType), newValue);
+            // Find the index of the enum name in property.enumNames
+            string newName = newValue.ToString();
+            int newIndex = Array.IndexOf(property.enumNames, newName);
             SetEnumValue(property, newIndex);
         }
 
