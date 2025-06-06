@@ -388,6 +388,7 @@ namespace UnityEssentials
         {
             try
             {
+                InspectorHook.InvokePreProcess();
                 Enum selectedValue = (Enum)_enumValues.GetValue(index);
                 _onValueSelected?.Invoke(selectedValue);
                 InspectorHook.InvokePostProcess();
