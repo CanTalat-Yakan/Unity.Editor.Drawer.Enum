@@ -74,10 +74,14 @@ namespace UnityEssentials
         public static void EnumPopup(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
         {
             var buttonText = ObjectNames.NicifyVariableName(currentValue.ToString());
+
             var buttonClicked = GUI.Button(position, new GUIContent(buttonText), EditorStyles.popup);
-            var keyboardClicked = InspectorFocusedHelper.ProcessKeyboardClick(position);
+            var keyboardClicked = InspectorFocusedHelper.ProcessKeyboardClick(position, out var controlID);
             if (buttonClicked || keyboardClicked)
                 EnumSearchPopup.Show(position, enumType, currentValue, onValueChanged);
+
+            if (InspectorFocusedHelper.IsControlFocused(controlID)) 
+                HandleKeyboardInput(position, currentValue, enumType, onValueChanged);
         }
 
         public static void EnumPopup(Rect position, Enum currentValue, Type enumType, SerializedProperty property) =>
@@ -88,6 +92,34 @@ namespace UnityEssentials
 
         public static void EnumPopup<T>(Rect position, Enum currentValue) where T : Enum =>
             EnumPopup<T>(position, currentValue, (newValue) => currentValue = newValue);
+
+        private static void HandleKeyboardInput(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
+        {
+            // Keyboard navigation for focused enum field (when popup is NOT open)
+            if (Event.current.type == EventType.KeyDown)
+            {
+                var enumValues = Enum.GetValues(enumType);
+                int currentIndex = Array.IndexOf(enumValues, currentValue);
+                int newIndex = currentIndex;
+
+                if (Event.current.keyCode == KeyCode.DownArrow)
+                {
+                    newIndex = Mathf.Min(currentIndex + 1, enumValues.Length - 1);
+                    Event.current.Use();
+                }
+                else if (Event.current.keyCode == KeyCode.UpArrow)
+                {
+                    newIndex = Mathf.Max(currentIndex - 1, 0);
+                    Event.current.Use();
+                }
+
+                if (newIndex != currentIndex)
+                {
+                    onValueChanged((Enum)enumValues.GetValue(newIndex));
+
+                }
+            }
+        }
     }
 }
 #endif
