@@ -77,12 +77,6 @@ namespace UnityEssentials
             window.ScrollToCurrentItem();
         }
 
-        /// <summary>
-        /// Handles the rendering and interaction logic for the graphical user interface (GUI).
-        /// </summary>
-        /// <remarks>This method processes keyboard and mouse input, renders the search field and enum
-        /// list,  and updates the hover index when the search string changes. It ensures that the GUI  remains
-        /// responsive and visually consistent during user interactions.</remarks>
         public void OnGUI()
         {
             string previousSearch = _searchString;
@@ -105,11 +99,6 @@ namespace UnityEssentials
             }
         }
 
-        /// <summary>
-        /// Handles the event when the control loses focus.
-        /// </summary>
-        /// <remarks>This method is typically used to perform cleanup or finalize operations  when the
-        /// control is no longer the active element.</remarks>
         public void OnLostFocus() =>
             Close();
 
@@ -386,15 +375,10 @@ namespace UnityEssentials
         /// array.</param>
         private void SetEnumValue(int index)
         {
-            try
-            {
-                InspectorHook.InvokePreProcess();
-                Enum selectedValue = (Enum)_enumValues.GetValue(index);
-                _onValueSelected?.Invoke(selectedValue);
-                InspectorHook.InvokePostProcess();
-                Close();
-            }
-            catch (Exception) { }
+            InspectorHook.InvokePreProcess();
+            _onValueSelected?.Invoke((Enum)_enumValues.GetValue(index));
+            InspectorHook.InvokePostProcess();
+            Close();
         }
     }
 }
