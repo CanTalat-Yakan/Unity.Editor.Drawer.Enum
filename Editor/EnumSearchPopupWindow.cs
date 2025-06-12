@@ -17,7 +17,7 @@ namespace UnityEssentials
     {
         private const float LineHeight = 22f;
         private const float Padding = 4f;
-        private const float MinWindowWidth = 150f;
+        private const float MinWindowWidth = 75f;
         private const float MaxWindowHeight = 1500f;
 
         private string _searchString = string.Empty;
