@@ -78,7 +78,10 @@ namespace UnityEssentials
             var buttonClicked = GUI.Button(position, new GUIContent(buttonText), EditorStyles.popup);
             var keyboardClicked = InspectorFocusedHelper.ProcessKeyboardClick(position, out var controlID);
             if (buttonClicked || keyboardClicked)
+            {
                 EnumSearchPopup.Show(position, enumType, currentValue, onValueChanged);
+                InspectorFocusedHelper.SetControlFocused(controlID);
+            }
 
             if (InspectorFocusedHelper.IsControlFocused(controlID)) 
                 HandleKeyboardInput(position, currentValue, enumType, onValueChanged);
