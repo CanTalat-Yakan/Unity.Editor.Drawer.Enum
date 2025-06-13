@@ -16,7 +16,6 @@ namespace UnityEssentials
     public class EnumEditor
     {
         public EditorWindowDrawer window;
-
         public Action Repaint;
         public Action Close;
 
