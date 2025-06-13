@@ -56,7 +56,7 @@ namespace UnityEssentials
                     Mathf.Max(buttonRect.width, MinWindowWidth),
                     contentHeight);
 
-            var window = new EditorWindowDrawer("", null, null, false, true)
+            var window = new EditorWindowDrawer(drawBorder: true)
                 .SetPreProcess(popup.PreProcess)
                 .SetPostProcess(popup.PostProcess)
                 .SetHeader(popup.Header)
