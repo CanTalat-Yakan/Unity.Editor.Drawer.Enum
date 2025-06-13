@@ -2,7 +2,8 @@
     "name": "UnityEssentials.EnumDrawer.Editor",
     "rootNamespace": "UnityEssentials",
     "references": [
-        "GUID:9fb86f0caf7d8a8488cd8aeb21105895"
+        "GUID:9fb86f0caf7d8a8488cd8aeb21105895",
+        "GUID:71b3a2b9f99395340b8b9366efa20e3d"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
