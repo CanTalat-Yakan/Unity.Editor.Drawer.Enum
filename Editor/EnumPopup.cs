@@ -13,10 +13,10 @@ namespace UnityEssentials
     /// It supports searching and filtering through the enumeration values, as well as keyboard and mouse navigation.
     /// The popup is used in editor contexts where a user-friendly interface for selecting enum values is
     /// required.</remarks>
-    public class EnumSearchPopup
+    public class EnumPopup
     {
-        public Rect WindowPosition;
-        public Vector2 ScrollPosition;
+        public EditorWindowDrawer EditorWindow;
+
         public Action Repaint;
         public Action Close;
 
@@ -33,7 +33,7 @@ namespace UnityEssentials
         private const float MinWindowWidth = 75f;
         private const float MaxWindowHeight = 1500f;
 
-        public EnumSearchPopup(Type enumType, Enum currentValue, Action<Enum> onValueSelected)
+        public EnumPopup(Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
             _enumValues = Enum.GetValues(enumType);
             _enumNames = Enum.GetNames(enumType);
@@ -42,29 +42,24 @@ namespace UnityEssentials
             _onValueSelected = onValueSelected;
         }
 
-        public static void Show(Rect buttonRect, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
+        public static void ShowAsDropDown(Rect buttonRect, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
-            var popup = new EnumSearchPopup(enumType, currentValue, onValueSelected);
+            var popup = new EnumPopup(enumType, currentValue, onValueSelected);
 
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
-            var contentHeight = Mathf.Min(
-                    popup.CalculateContentHeight(),
-                    MaxWindowHeight,
-                    availableHeight);
-            var dropdownSize = new Vector2(
-                    Mathf.Max(buttonRect.width, MinWindowWidth),
-                    contentHeight);
+            var contentwidth = Mathf.Max(MinWindowWidth, buttonRect.width);
+            var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, popup.CalculateContentHeight());
+            var dropdownSize = new Vector2(contentwidth, contentHeight);
 
-            var window = new EditorWindowDrawer(drawBorder: true)
+            popup.EditorWindow = new EditorWindowDrawer() 
                 .SetPreProcess(popup.PreProcess)
                 .SetPostProcess(popup.PostProcess)
                 .SetHeader(popup.Header)
                 .SetBody(popup.Body)
-                .GetBodyScrollPosition(ref popup.ScrollPosition)
-                .GetWindowPosition(ref popup.WindowPosition)
                 .GetRepaintEvent(out popup.Repaint)
                 .GetCloseEvent(out popup.Close)
+                .SetDrawBorder()
                 .ShowAsDropDown(buttonRect, dropdownSize);
 
             popup.ScrollToCurrentItem();
@@ -173,11 +168,11 @@ namespace UnityEssentials
                     return;
                 _previousMousePosition = Event.current.mousePosition;
 
-                var contentPosition = new Rect(0, LineHeight, WindowPosition.width, WindowPosition.height - (LineHeight));
+                var contentPosition = new Rect(0, LineHeight, EditorWindow.Position.width, EditorWindow.Position.height - (LineHeight));
                 if (contentPosition.Contains(Event.current.mousePosition))
                 {
                     var filtered = GetFilteredIndices();
-                    var scrollY = _previousMousePosition.y - LineHeight + ScrollPosition.y;
+                    var scrollY = _previousMousePosition.y - LineHeight + EditorWindow.ScrollPosition.y;
                     var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
                     _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
                     Repaint();
@@ -203,11 +198,11 @@ namespace UnityEssentials
                 return;
 
             var itemPosition = itemIndex * LineHeight;
-            var scrollViewHeight = WindowPosition.height - LineHeight - 2 * Padding; // Account for search field and padding
+            var scrollViewHeight = EditorWindow.Position.height - LineHeight - 2 * Padding; // Account for search field and padding
             var maxScroll = Mathf.Max(0, (filtered.Count * LineHeight) - scrollViewHeight);
 
             // Center the item in the scroll view
-            ScrollPosition.y = Mathf.Clamp(itemPosition - (scrollViewHeight / 2), 0, maxScroll);
+            EditorWindow.ScrollPosition.y = Mathf.Clamp(itemPosition - (scrollViewHeight / 2), 0, maxScroll);
         }
 
         private static readonly Color s_highlightColorPro = new Color(0.24f, 0.37f, 0.58f);
