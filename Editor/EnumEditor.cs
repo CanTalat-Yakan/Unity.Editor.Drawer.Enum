@@ -15,7 +15,7 @@ namespace UnityEssentials
     /// required.</remarks>
     public class EnumEditor
     {
-        public EditorWindowDrawer window;
+        public EditorWindowDrawer Window;
         public Action Repaint;
         public Action Close;
 
@@ -51,7 +51,7 @@ namespace UnityEssentials
             var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, editor.CalculateContentHeight());
             var dropdownSize = new Vector2(contentwidth, contentHeight);
 
-            editor.window = new EditorWindowDrawer() 
+            editor.Window = new EditorWindowDrawer() 
                 .SetPreProcess(editor.PreProcess)
                 .SetPostProcess(editor.PostProcess)
                 .SetHeader(editor.Header)
@@ -167,11 +167,11 @@ namespace UnityEssentials
                     return;
                 _previousMousePosition = Event.current.mousePosition;
 
-                var contentPosition = new Rect(0, LineHeight, window.Position.width, window.Position.height - (LineHeight));
+                var contentPosition = new Rect(0, LineHeight, Window.Position.width, Window.Position.height - (LineHeight));
                 if (contentPosition.Contains(Event.current.mousePosition))
                 {
                     var filtered = GetFilteredIndices();
-                    var scrollY = _previousMousePosition.y - LineHeight + window.ScrollPosition.y;
+                    var scrollY = _previousMousePosition.y - LineHeight + Window.ScrollPosition.y;
                     var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
                     _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
                     Repaint();
@@ -197,11 +197,11 @@ namespace UnityEssentials
                 return;
 
             var itemPosition = itemIndex * LineHeight;
-            var scrollViewHeight = window.Position.height - LineHeight - 2 * Padding; // Account for search field and padding
+            var scrollViewHeight = Window.Position.height - LineHeight - 2 * Padding; // Account for search field and padding
             var maxScroll = Mathf.Max(0, (filtered.Count * LineHeight) - scrollViewHeight);
 
             // Center the item in the scroll view
-            window.ScrollPosition.y = Mathf.Clamp(itemPosition - (scrollViewHeight / 2), 0, maxScroll);
+            Window.ScrollPosition.y = Mathf.Clamp(itemPosition - (scrollViewHeight / 2), 0, maxScroll);
         }
 
         private static readonly Color s_highlightColorPro = new Color(0.24f, 0.37f, 0.58f);
