@@ -79,7 +79,7 @@ namespace UnityEssentials
             var keyboardClicked = InspectorFocusedHelper.ProcessKeyboardClick(position, out var controlID);
             if (buttonClicked || keyboardClicked)
             {
-                UnityEssentials.EnumEditor.ShowAsDropDown(position, enumType, currentValue, onValueChanged);
+                EnumEditor.ShowAsDropDown(position, enumType, currentValue, onValueChanged);
                 InspectorFocusedHelper.SetControlFocused(controlID);
             }
 
