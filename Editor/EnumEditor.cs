@@ -51,7 +51,7 @@ namespace UnityEssentials
             var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, editor.CalculateContentHeight());
             var dropdownSize = new Vector2(contentwidth, contentHeight);
 
-            editor.Window = new EditorWindowDrawer() 
+            editor.Window = new EditorWindowDrawer()
                 .SetPreProcess(editor.PreProcess)
                 .SetPostProcess(editor.PostProcess)
                 .SetHeader(editor.Header)
@@ -84,10 +84,11 @@ namespace UnityEssentials
 
         public void Header()
         {
-            GUILayout.BeginHorizontal(EditorStyles.toolbar);
-            GUI.SetNextControlName("SearchField");
-            _currentSearchString = GUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
-            GUILayout.EndHorizontal();
+            using (new GUILayout.HorizontalScope())
+            {
+                GUI.SetNextControlName("SearchField");
+                _currentSearchString = GUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
+            }
             EditorGUI.FocusTextInControl("SearchField");
         }
 
