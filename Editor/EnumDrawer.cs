@@ -23,7 +23,7 @@ namespace UnityEssentials
             {
                 var enumType = InspectorHookUtilities.GetEnumType(fieldInfo);
                 var currentValue = InspectorHookUtilities.GetCurrentValue(enumType, property);
-                string[] enumNames = Enum.GetNames(enumType);
+                var enumNames = Enum.GetNames(enumType);
 
                 DrawEnumPopup(position, property, label, enumType, currentValue, enumNames);
             }
