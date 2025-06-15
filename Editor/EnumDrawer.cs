@@ -25,26 +25,14 @@ namespace UnityEssentials
                 var currentValue = InspectorHookUtilities.GetCurrentValue(enumType, property);
                 string[] enumNames = Enum.GetNames(enumType);
 
-                DrawSearchPopup(position, property, label, enumType, currentValue, enumNames);
+                DrawEnumPopup(position, property, label, enumType, currentValue, enumNames);
             }
             catch { EditorGUI.PropertyField(position, property, label); }
 
             EditorGUI.EndProperty();
         }
 
-        /// <summary>
-        /// Displays a popup UI element for selecting an enumeration value.
-        /// </summary>
-        /// <remarks>This method renders a labeled popup control in the Unity Editor, allowing users to
-        /// select a value from the specified enumeration. The label is optional and will only be displayed if <paramref
-        /// name="label"/> is not <see cref="GUIContent.none"/>.</remarks>
-        /// <param name="position">The screen position and size of the popup control.</param>
-        /// <param name="property">The serialized property associated with the selected enumeration value.</param>
-        /// <param name="label">The label to display next to the popup control. Use <see cref="GUIContent.none"/> to omit the label.</param>
-        /// <param name="enumType">The type of the enumeration to display in the popup.</param>
-        /// <param name="currentValue">The currently selected enumeration value.</param>
-        /// <param name="enumNames">An array of enumeration names to display in the popup.</param>
-        private void DrawSearchPopup(Rect position, SerializedProperty property, GUIContent label, Type enumType, Enum currentValue, string[] enumNames)
+        private void DrawEnumPopup(Rect position, SerializedProperty property, GUIContent label, Type enumType, Enum currentValue, string[] enumNames)
         {
             var labelPosition = new Rect(position);
             var buttonPosition = new Rect(position);
@@ -60,17 +48,6 @@ namespace UnityEssentials
             EnumPopup(buttonPosition, currentValue, enumType, property);
         }
 
-        /// <summary>
-        /// Displays a popup menu for selecting a value from an enumeration.
-        /// </summary>
-        /// <remarks>This method creates a popup menu styled for use in the Unity Editor. It allows users
-        /// to select a value from the specified enumeration. The popup is triggered by a button click or a keyboard
-        /// interaction within the specified rectangle.</remarks>
-        /// <param name="position">The screen rectangle that defines the position and size of the popup menu.</param>
-        /// <param name="currentValue">The currently selected enumeration value. This determines the initial selection in the popup.</param>
-        /// <param name="enumType">The type of the enumeration to display in the popup. Must be a valid <see cref="System.Enum"/> type.</param>
-        /// <param name="onValueChanged">A callback action that is invoked when the user selects a new value from the popup. The selected value is
-        /// passed as a parameter to the callback.</param>
         public static void EnumPopup(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
         {
             var buttonText = ObjectNames.NicifyVariableName(currentValue.ToString());
@@ -98,7 +75,6 @@ namespace UnityEssentials
 
         private static void HandleKeyboardInput(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
         {
-            // Keyboard navigation for focused enum field (when popup is NOT open)
             if (Event.current.type == EventType.KeyDown)
             {
                 var enumValues = Enum.GetValues(enumType);
