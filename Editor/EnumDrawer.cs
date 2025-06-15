@@ -53,14 +53,14 @@ namespace UnityEssentials
             var buttonText = ObjectNames.NicifyVariableName(currentValue.ToString());
 
             var buttonClicked = GUI.Button(position, new GUIContent(buttonText), EditorStyles.popup);
-            var keyboardClicked = InspectorFocusedHelper.ProcessKeyboardClick(position, out var controlID);
+            var keyboardClicked = InspectorFocusHelper.ProcessKeyboardClick(position, out var controlID);
             if (buttonClicked || keyboardClicked)
             {
                 EnumEditor.ShowAsDropDown(position, enumType, currentValue, onValueChanged);
-                InspectorFocusedHelper.SetControlFocused(controlID);
+                InspectorFocusHelper.SetControlFocused(controlID);
             }
 
-            if (InspectorFocusedHelper.IsControlFocused(controlID)) 
+            if (InspectorFocusHelper.IsControlFocused(controlID)) 
                 HandleKeyboardInput(position, currentValue, enumType, onValueChanged);
         }
 
