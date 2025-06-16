@@ -60,7 +60,7 @@ namespace UnityEssentials
                 InspectorFocusHelper.SetControlFocused(controlID);
             }
 
-            if (InspectorFocusHelper.IsControlFocused(controlID)) 
+            if (InspectorFocusHelper.IsControlFocused(controlID))
                 HandleKeyboardInput(position, currentValue, enumType, onValueChanged);
         }
 
