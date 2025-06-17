@@ -49,7 +49,7 @@ namespace UnityEssentials
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
             var contentwidth = Mathf.Max(MinWindowWidth, buttonRect.width);
             var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, editor.CalculateContentHeight());
-            var dropdownSize = new Vector2(contentwidth, contentHeight);
+            var dropdownSize = new Vector2(contentwidth, contentHeight - 3);
 
             editor.Window = new EditorWindowDrawer()
                 .SetPreProcess(editor.PreProcess)
@@ -163,20 +163,18 @@ namespace UnityEssentials
         private void HandleMouseMovement()
         {
             if (Event.current.type == EventType.MouseMove || Event.current.type == EventType.Layout)
-            {
-                if (_previousMousePosition == Event.current.mousePosition)
-                    return;
-                _previousMousePosition = Event.current.mousePosition;
+                if (_previousMousePosition != Event.current.mousePosition)
+                    _previousMousePosition = Event.current.mousePosition;
+                else return;
 
-                var contentPosition = new Rect(0, LineHeight, Window.Position.width, Window.Position.height - (LineHeight));
-                if (contentPosition.Contains(Event.current.mousePosition))
-                {
-                    var filtered = GetFilteredIndices();
-                    var scrollY = _previousMousePosition.y - LineHeight + Window.ScrollPosition.y;
-                    var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
-                    _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
-                    Repaint();
-                }
+            var contentPosition = new Rect(0, LineHeight, Window.Position.width, Window.Position.height);
+            if (contentPosition.Contains(Event.current.mousePosition))
+            {
+                var filtered = GetFilteredIndices();
+                var scrollY = Event.current.mousePosition.y - LineHeight + Window.ScrollPosition.y;
+                var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
+                _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
+                Repaint();
             }
         }
 
