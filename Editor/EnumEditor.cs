@@ -32,6 +32,10 @@ namespace UnityEssentials
         private const float MinWindowWidth = 75f;
         private const float MaxWindowHeight = 1500f;
 
+        private string[] _enumNamesLower;
+        private string[] _enumNamesNicified;
+        private string[] _enumNamesNicifiedLower;
+
         public EnumEditor(Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
             _enumValues = Enum.GetValues(enumType);
@@ -39,19 +43,32 @@ namespace UnityEssentials
             _currentIndex = Array.IndexOf(_enumValues, currentValue);
             _hoverIndex = _currentIndex;
             _onValueSelected = onValueSelected;
+
+            int length = _enumNames.Length;
+            _enumNamesLower = new string[length];
+            _enumNamesNicified = new string[length];
+            _enumNamesNicifiedLower = new string[length];
+            for (int i = 0; i < length; i++)
+            {
+                _enumNamesLower[i] = _enumNames[i].ToLowerInvariant();
+                _enumNamesNicified[i] = ObjectNames.NicifyVariableName(_enumNames[i]);
+                _enumNamesNicifiedLower[i] = _enumNamesNicified[i].ToLowerInvariant();
+            }
         }
 
-        public static void ShowAsDropDown(Rect buttonRect, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
+        public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
             var editor = new EnumEditor(enumType, currentValue, onValueSelected);
 
-            var windowPosition = GUIUtility.GUIToScreenPoint(buttonRect.position + new Vector2(0, buttonRect.height));
+            var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
-            var contentwidth = Mathf.Max(MinWindowWidth, buttonRect.width);
-            var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, editor.CalculateContentHeight());
+            var contentwidth = Mathf.Max(MinWindowWidth, buttonPosition.width);
+            var calculateContentHeight = LineHeight + (editor.GetFilteredIndices().Count * LineHeight) + 1;
+            var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, calculateContentHeight);
             var dropdownSize = new Vector2(contentwidth, contentHeight - 3);
 
             editor.Window = new EditorWindowDrawer()
+                .AddUpdate(editor.Update)
                 .SetPreProcess(editor.PreProcess)
                 .SetPostProcess(editor.PostProcess)
                 .SetHeader(editor.Header)
@@ -59,22 +76,22 @@ namespace UnityEssentials
                 .GetRepaintEvent(out editor.Repaint)
                 .GetCloseEvent(out editor.Close)
                 .SetDrawBorder()
-                .ShowAsDropDown(buttonRect, dropdownSize);
+                .ShowAsDropDown(buttonPosition, dropdownSize);
 
             editor.ScrollToCurrentItem();
         }
 
-        public void PreProcess()
-        {
-            _previousSearchString = _currentSearchString;
-            HandleKeyboardInput();
+        private void Update() =>
             HandleMouseMovement();
-        }
+
+        public void PreProcess() =>
+            HandleKeyboardInput();
 
         public void PostProcess()
         {
             if (_currentSearchString != _previousSearchString)
             {
+                _previousSearchString = _currentSearchString;
                 var filtered = GetFilteredIndices();
                 _hoverIndex = filtered.Count > 0 ? filtered[0] : -1;
                 if (_hoverIndex != -1)
@@ -84,11 +101,8 @@ namespace UnityEssentials
 
         public void Header()
         {
-            using (new GUILayout.HorizontalScope())
-            {
-                GUI.SetNextControlName("SearchField");
-                _currentSearchString = GUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
-            }
+            GUI.SetNextControlName("SearchField");
+            _currentSearchString = GUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
             EditorGUI.FocusTextInControl("SearchField");
         }
 
@@ -100,17 +114,17 @@ namespace UnityEssentials
             for (int i = 0; i < filteredIndices.Count; i++)
             {
                 var index = filteredIndices[i];
-                var rect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(LineHeight));
+                var position = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(LineHeight));
 
                 if (Event.current.type == EventType.Repaint)
                 {
                     var isSelected = index == _currentIndex;
                     var isHovered = index == _hoverIndex;
-                    DrawItemBackground(rect, isSelected || isHovered);
-                    DrawItemText(rect, _enumNames[index], isSelected || isHovered);
+                    DrawItemBackground(position, isSelected || isHovered);
+                    DrawItemText(position, _enumNamesNicified[index], isSelected || isHovered);
                 }
 
-                if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+                if (GUI.Button(position, GUIContent.none, GUIStyle.none))
                 {
                     SetEnumValue(index);
                     Close();
@@ -162,16 +176,16 @@ namespace UnityEssentials
         private Vector2 _previousMousePosition;
         private void HandleMouseMovement()
         {
-            if (Event.current.type == EventType.MouseMove || Event.current.type == EventType.Layout)
-                if (_previousMousePosition != Event.current.mousePosition)
-                    _previousMousePosition = Event.current.mousePosition;
-                else return;
+            var currentMousePosition = Window.GetLocalMousePosition();
+            if (_previousMousePosition != currentMousePosition)
+                _previousMousePosition = currentMousePosition;
+            else return;
 
             var contentPosition = new Rect(0, LineHeight, Window.Position.width, Window.Position.height);
-            if (contentPosition.Contains(Event.current.mousePosition))
+            if (contentPosition.Contains(Window.GetLocalMousePosition()))
             {
                 var filtered = GetFilteredIndices();
-                var scrollY = Event.current.mousePosition.y - LineHeight + Window.ScrollPosition.y;
+                var scrollY = currentMousePosition.y - LineHeight + Window.ScrollPosition.y;
                 var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
                 _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
                 Repaint();
@@ -205,16 +219,16 @@ namespace UnityEssentials
 
         private static readonly Color s_highlightColorPro = new Color(0.24f, 0.37f, 0.58f);
         private static readonly Color s_highlightColorLight = new Color(0.22f, 0.44f, 0.9f);
-        private void DrawItemBackground(Rect rect, bool highlighted)
+        private void DrawItemBackground(Rect position, bool highlighted)
         {
             if (highlighted)
             {
                 var color = EditorGUIUtility.isProSkin ? s_highlightColorPro : s_highlightColorLight;
-                EditorGUI.DrawRect(rect, color);
+                EditorGUI.DrawRect(position, color);
             }
         }
 
-        private void DrawItemText(Rect rect, string text, bool highlighted)
+        private void DrawItemText(Rect position, string text, bool highlighted)
         {
             var color = highlighted ? Color.white : EditorStyles.label.normal.textColor;
             var style = new GUIStyle(EditorStyles.label)
@@ -225,43 +239,32 @@ namespace UnityEssentials
                 hover = { textColor = color }
             };
 
-            GUI.Label(rect, ObjectNames.NicifyVariableName(text), style);
+            GUI.Label(position, text, style);
         }
 
-        /// <summary>
-        /// Calculates the total height of the content based on the line height and the number of filtered indices.
-        /// </summary>
-        /// <returns>The total height of the content as a floating-point value. This includes the base line height,  the height
-        /// contributed by the filtered indices, and an additional offset of 1.</returns>
-        private float CalculateContentHeight() =>
-            LineHeight + (GetFilteredIndices().Count * LineHeight) + 1;
-
-        /// <summary>
-        /// Retrieves a list of indices from the enumeration names that match the current search string.
-        /// </summary>
-        /// <remarks>The method compares the search string against both the raw and nicified versions of
-        /// the enumeration names. A match is determined if the search string is a substring of either version, ignoring
-        /// case. If the search string is empty or null, all indices are included in the result.</remarks>
-        /// <returns>A list of indices corresponding to enumeration names that match the search string.  The list will contain
-        /// all indices if the search string is empty or null.</returns>
+        private List<int> _filteredIndicesCache = null;
         private List<int> GetFilteredIndices()
         {
-            var lowerSearch = _currentSearchString.ToLower();
-            var indices = new List<int>();
+            if (_filteredIndicesCache != null && _currentSearchString == _previousSearchString)
+                return _filteredIndicesCache;
 
-            for (int i = 0; i < _enumNames.Length; i++)
+            List<int> indices;
+            if (string.IsNullOrEmpty(_currentSearchString))
             {
-                var rawName = _enumNames[i];
-                var nicifiedName = ObjectNames.NicifyVariableName(rawName);
-
-                bool matchesRaw = rawName.ToLower().Contains(lowerSearch);
-                bool matchesNicified = nicifiedName.ToLower().Contains(lowerSearch);
-
-                if (string.IsNullOrEmpty(lowerSearch) || matchesRaw || matchesNicified)
+                indices = new(_enumNames.Length);
+                for (int i = 0; i < _enumNames.Length; i++)
                     indices.Add(i);
             }
+            else
+            {
+                string lowerSearch = _currentSearchString.ToLowerInvariant();
+                indices = new();
+                for (int i = 0; i < _enumNames.Length; i++)
+                    if (_enumNamesLower[i].Contains(lowerSearch) || _enumNamesNicifiedLower[i].Contains(lowerSearch))
+                        indices.Add(i);
+            }
 
-            return indices;
+            return _filteredIndicesCache = indices;
         }
 
         /// <summary>
