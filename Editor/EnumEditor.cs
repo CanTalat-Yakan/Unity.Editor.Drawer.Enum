@@ -31,6 +31,7 @@ namespace UnityEssentials
         private const float Padding = 4f;
         private const float MinWindowWidth = 75f;
         private const float MaxWindowHeight = 1500f;
+        private const int ShowSearchFieldThreshold = 10;
 
         private string[] _enumNamesLower;
         private string[] _enumNamesNicified;
@@ -63,7 +64,8 @@ namespace UnityEssentials
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
             var contentwidth = Mathf.Max(MinWindowWidth, buttonPosition.width);
-            var calculateContentHeight = LineHeight + (editor.GetFilteredIndices().Count * LineHeight) + 1;
+            var searchFieldHeight = editor._isSearchFieldVisible ? LineHeight : Padding;
+            var calculateContentHeight = searchFieldHeight + (editor.GetFilteredIndices().Count * LineHeight) + 1;
             var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, calculateContentHeight);
             var dropdownSize = new Vector2(contentwidth, contentHeight - 3);
 
@@ -99,8 +101,12 @@ namespace UnityEssentials
             }
         }
 
+        private bool _isSearchFieldVisible => _enumNames.Length >= ShowSearchFieldThreshold;
         public void Header()
         {
+            if (!_isSearchFieldVisible)
+                return;
+
             GUI.SetNextControlName("SearchField");
             _currentSearchString = GUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
             EditorGUI.FocusTextInControl("SearchField");
@@ -181,11 +187,12 @@ namespace UnityEssentials
                 _previousMousePosition = currentMousePosition;
             else return;
 
-            var contentPosition = new Rect(0, LineHeight, Window.Position.width, Window.Position.height);
+            var searchFieldHeight = _isSearchFieldVisible ? LineHeight : 0;
+            var contentPosition = new Rect(0, searchFieldHeight, Window.Position.width, Window.Position.height);
             if (contentPosition.Contains(Window.GetLocalMousePosition()))
             {
                 var filtered = GetFilteredIndices();
-                var scrollY = currentMousePosition.y - LineHeight + Window.ScrollPosition.y;
+                var scrollY = currentMousePosition.y + Window.ScrollPosition.y - searchFieldHeight;
                 var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
                 _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
                 Repaint();
