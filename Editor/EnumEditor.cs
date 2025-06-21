@@ -7,35 +7,34 @@ using UnityEngine;
 namespace UnityEssentials
 {
     /// <summary>
-    /// Provides a popup window for selecting an enumeration value with search and filtering capabilities.
+    /// Optimized popup window for selecting enumeration values with virtualization and search.
     /// </summary>
-    /// <remarks>This class is designed to display a dropdown-style popup for selecting an enumeration value.
-    /// It supports searching and filtering through the enumeration values, as well as keyboard and mouse navigation.
-    /// The popup is used in editor contexts where a user-friendly interface for selecting enum values is
-    /// required.</remarks>
     public class EnumEditor
     {
         public EditorWindowDrawer Window;
         public Action Repaint;
         public Action Close;
 
-        private string[] _enumNames;
-        private Array _enumValues;
-        private int _currentIndex;
+        private readonly string[] _enumNames;
+        private readonly Array _enumValues;
+        private readonly int _currentIndex;
         private string _currentSearchString = string.Empty;
-        private string _previousSearchString = string.Empty;
         private int _hoverIndex = -1;
-        private Action<Enum> _onValueSelected;
+        private readonly Action<Enum> _onValueSelected;
 
         private const float LineHeight = 22f;
-        private const float Padding = 4f;
-        private const float MinWindowWidth = 75f;
-        private const float MaxWindowHeight = 1500f;
         private const int ShowSearchFieldThreshold = 10;
+        private const int VirtualizationPadding = 2;
 
-        private string[] _enumNamesLower;
-        private string[] _enumNamesNicified;
-        private string[] _enumNamesNicifiedLower;
+        private readonly string[] _enumNamesLower;
+        private readonly string[] _enumNamesNicified;
+        private readonly string[] _enumNamesNicifiedLower;
+
+        private List<int> _filteredIndices;
+        private bool _needsFilterRefresh = true;
+        private int _lastVisibleIndex = -1;
+        private int _firstVisibleIndex = -1;
+        private bool _hasInitialized;
 
         public EnumEditor(Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
@@ -49,12 +48,15 @@ namespace UnityEssentials
             _enumNamesLower = new string[length];
             _enumNamesNicified = new string[length];
             _enumNamesNicifiedLower = new string[length];
+
             for (int i = 0; i < length; i++)
             {
                 _enumNamesLower[i] = _enumNames[i].ToLowerInvariant();
                 _enumNamesNicified[i] = ObjectNames.NicifyVariableName(_enumNames[i]);
                 _enumNamesNicifiedLower[i] = _enumNamesNicified[i].ToLowerInvariant();
             }
+
+            RefreshFilteredIndices();
         }
 
         public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
@@ -63,43 +65,30 @@ namespace UnityEssentials
 
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
-            var contentwidth = Mathf.Max(MinWindowWidth, buttonPosition.width);
-            var searchFieldHeight = editor._isSearchFieldVisible ? LineHeight : Padding;
-            var calculateContentHeight = searchFieldHeight + (editor.GetFilteredIndices().Count * LineHeight) + 1;
-            var contentHeight = Mathf.Min(MaxWindowHeight, availableHeight, calculateContentHeight);
-            var dropdownSize = new Vector2(contentwidth, contentHeight - 3);
+            var contentWidth = Mathf.Max(buttonPosition.width, 150f);
+            var searchFieldHeight = editor._isSearchFieldVisible ? LineHeight : 0;
+            var maxVisibleItems = Mathf.FloorToInt((availableHeight - searchFieldHeight) / LineHeight);
+            var visibleItemCount = Mathf.Min(editor._filteredIndices.Count, maxVisibleItems);
+            var contentHeight = searchFieldHeight + (visibleItemCount * LineHeight) + 2;
 
             editor.Window = new EditorWindowDrawer()
                 .AddUpdate(editor.Update)
                 .SetPreProcess(editor.PreProcess)
-                .SetPostProcess(editor.PostProcess)
                 .SetHeader(editor.Header)
                 .SetBody(editor.Body)
                 .GetRepaintEvent(out editor.Repaint)
                 .GetCloseEvent(out editor.Close)
                 .SetDrawBorder()
-                .ShowAsDropDown(buttonPosition, dropdownSize);
+                .ShowAsDropDown(buttonPosition, new(contentWidth, contentHeight));
 
             editor.ScrollToCurrentItem();
         }
 
-        private void Update() =>
+        public void Update() =>
             HandleMouseMovement();
 
         public void PreProcess() =>
             HandleKeyboardInput();
-
-        public void PostProcess()
-        {
-            if (_currentSearchString != _previousSearchString)
-            {
-                _previousSearchString = _currentSearchString;
-                var filtered = GetFilteredIndices();
-                _hoverIndex = filtered.Count > 0 ? filtered[0] : -1;
-                if (_hoverIndex != -1)
-                    ScrollToItem(_hoverIndex);
-            }
-        }
 
         private bool _isSearchFieldVisible => _enumNames.Length >= ShowSearchFieldThreshold;
         public void Header()
@@ -107,25 +96,47 @@ namespace UnityEssentials
             if (!_isSearchFieldVisible)
                 return;
 
-            GUI.SetNextControlName("SearchField");
-            _currentSearchString = GUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
-            EditorGUI.FocusTextInControl("SearchField");
+            GUI.SetNextControlName("EnumSearchField");
+            var newSearch = EditorGUILayout.TextField(_currentSearchString, EditorStyles.toolbarSearchField);
+            if (newSearch != _currentSearchString)
+            {
+                _currentSearchString = newSearch;
+                _needsFilterRefresh = true;
+            }
+
+            if (!_hasInitialized)
+            {
+                EditorGUI.FocusTextInControl("EnumSearchField");
+                _hasInitialized = true;
+            }
         }
 
+        Rect _visibleBody = default;
         public void Body()
         {
-            var filteredIndices = GetFilteredIndices();
-            var listHeight = filteredIndices.Count * LineHeight;
+            if (_needsFilterRefresh)
+                RefreshFilteredIndices();
 
-            for (int i = 0; i < filteredIndices.Count; i++)
+            // Reserve space for the full list to ensure scrollbar appears
+            float totalHeight = _filteredIndices.Count * LineHeight;
+            _visibleBody = GUILayoutUtility.GetRect(1, totalHeight, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(false));
+
+            // Calculate visible indices
+            _firstVisibleIndex = Mathf.FloorToInt(Window.ScrollPosition.y / LineHeight) - VirtualizationPadding;
+            _lastVisibleIndex = Mathf.CeilToInt((Window.ScrollPosition.y + _visibleBody.height) / LineHeight) + VirtualizationPadding;
+            _firstVisibleIndex = Mathf.Clamp(_firstVisibleIndex, 0, _filteredIndices.Count - 1);
+            _lastVisibleIndex = Mathf.Clamp(_lastVisibleIndex, 0, _filteredIndices.Count - 1);
+
+            // Only draw items within the visible range
+            for (int i = _firstVisibleIndex; i <= _lastVisibleIndex; i++)
             {
-                var index = filteredIndices[i];
-                var position = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.ExpandWidth(true), GUILayout.Height(LineHeight));
+                var index = _filteredIndices[i];
+                var position = new Rect(_visibleBody.x, _visibleBody.y + i * LineHeight, _visibleBody.width, LineHeight);
 
                 if (Event.current.type == EventType.Repaint)
                 {
-                    var isSelected = index == _currentIndex;
-                    var isHovered = index == _hoverIndex;
+                    bool isSelected = index == _currentIndex;
+                    bool isHovered = index == _hoverIndex;
                     DrawItemBackground(position, isSelected || isHovered);
                     DrawItemText(position, _enumNamesNicified[index], isSelected || isHovered);
                 }
@@ -138,156 +149,166 @@ namespace UnityEssentials
             }
         }
 
-        private void HandleKeyboardInput()
-        {
-            if (Event.current.type == EventType.KeyDown)
-            {
-                var filtered = GetFilteredIndices();
-                if (filtered.Count == 0)
-                    return;
-
-                var current = filtered.IndexOf(_hoverIndex);
-                current = Mathf.Clamp(current, 0, filtered.Count - 1);
-
-                switch (Event.current.keyCode)
-                {
-                    case KeyCode.DownArrow:
-                        current = Mathf.Clamp(current + 1, 0, filtered.Count - 1);
-                        _hoverIndex = filtered[current];
-                        Event.current.Use();
-                        ScrollToItem(_hoverIndex);
-                        Repaint();
-                        break;
-
-                    case KeyCode.UpArrow:
-                        current = Mathf.Clamp(current - 1, 0, filtered.Count - 1);
-                        _hoverIndex = filtered[current];
-                        Event.current.Use();
-                        ScrollToItem(_hoverIndex);
-                        Repaint();
-                        break;
-
-                    case KeyCode.Return:
-                        SetEnumValue(_hoverIndex);
-                        Close();
-                        break;
-
-                    case KeyCode.Escape:
-                        Close();
-                        break;
-                }
-            }
-        }
-
-        private Vector2 _previousMousePosition;
-        private void HandleMouseMovement()
-        {
-            var currentMousePosition = Window.GetLocalMousePosition();
-            if (_previousMousePosition != currentMousePosition)
-                _previousMousePosition = currentMousePosition;
-            else return;
-
-            var searchFieldHeight = _isSearchFieldVisible ? LineHeight : 0;
-            var contentPosition = new Rect(0, searchFieldHeight, Window.Position.width, Window.Position.height);
-            if (contentPosition.Contains(Window.GetLocalMousePosition()))
-            {
-                var filtered = GetFilteredIndices();
-                var scrollY = currentMousePosition.y + Window.ScrollPosition.y - searchFieldHeight;
-                var itemIndex = Mathf.FloorToInt(scrollY / LineHeight);
-                _hoverIndex = itemIndex >= 0 && itemIndex < filtered.Count ? filtered[itemIndex] : -1;
-                Repaint();
-            }
-        }
-
-        private void ScrollToCurrentItem()
-        {
-            var filtered = GetFilteredIndices();
-            if (filtered.Contains(_currentIndex))
-            {
-                _hoverIndex = _currentIndex;
-                ScrollToItem(_currentIndex);
-            }
-        }
-
-        private void ScrollToItem(int index)
-        {
-            var filtered = GetFilteredIndices();
-            var itemIndex = filtered.IndexOf(index);
-            if (itemIndex == -1)
-                return;
-
-            var itemPosition = itemIndex * LineHeight;
-            var scrollViewHeight = Window.Position.height - LineHeight - 2 * Padding; // Account for search field and padding
-            var maxScroll = Mathf.Max(0, (filtered.Count * LineHeight) - scrollViewHeight);
-
-            // Center the item in the scroll view
-            Window.ScrollPosition.y = Mathf.Clamp(itemPosition - (scrollViewHeight / 2), 0, maxScroll);
-        }
-
-        private static readonly Color s_highlightColorPro = new Color(0.24f, 0.37f, 0.58f);
-        private static readonly Color s_highlightColorLight = new Color(0.22f, 0.44f, 0.9f);
-        private void DrawItemBackground(Rect position, bool highlighted)
-        {
-            if (highlighted)
-            {
-                var color = EditorGUIUtility.isProSkin ? s_highlightColorPro : s_highlightColorLight;
-                EditorGUI.DrawRect(position, color);
-            }
-        }
-
-        private void DrawItemText(Rect position, string text, bool highlighted)
-        {
-            var color = highlighted ? Color.white : EditorStyles.label.normal.textColor;
-            var style = new GUIStyle(EditorStyles.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                padding = new RectOffset(10, 0, 0, 0),
-                normal = { textColor = color },
-                hover = { textColor = color }
-            };
-
-            GUI.Label(position, text, style);
-        }
-
-        private List<int> _filteredIndicesCache = null;
-        private List<int> GetFilteredIndices()
-        {
-            if (_filteredIndicesCache != null && _currentSearchString == _previousSearchString)
-                return _filteredIndicesCache;
-
-            List<int> indices;
-            if (string.IsNullOrEmpty(_currentSearchString))
-            {
-                indices = new(_enumNames.Length);
-                for (int i = 0; i < _enumNames.Length; i++)
-                    indices.Add(i);
-            }
-            else
-            {
-                string lowerSearch = _currentSearchString.ToLowerInvariant();
-                indices = new();
-                for (int i = 0; i < _enumNames.Length; i++)
-                    if (_enumNamesLower[i].Contains(lowerSearch) || _enumNamesNicifiedLower[i].Contains(lowerSearch))
-                        indices.Add(i);
-            }
-
-            return _filteredIndicesCache = indices;
-        }
-
-        /// <summary>
-        /// Sets the selected enumeration value based on the specified index and invokes the associated callback.
-        /// </summary>
-        /// <remarks>This method retrieves the enumeration value at the specified index, invokes the
-        /// callback with the selected value,  and then closes the current context. If an invalid index is provided, the
-        /// method will fail silently.</remarks>
-        /// <param name="index">The zero-based index of the enumeration value to select. Must be within the bounds of the enumeration values
-        /// array.</param>
         private void SetEnumValue(int index)
         {
             InspectorHook.InvokePreProcess();
             _onValueSelected?.Invoke((Enum)_enumValues.GetValue(index));
             InspectorHook.InvokePostProcess();
             Close();
+        }
+
+        private void HandleKeyboardInput()
+        {
+            if (Event.current.type == EventType.KeyDown)
+                return;
+
+            if (_filteredIndices.Count == 0)
+                return;
+
+            int current = _filteredIndices.IndexOf(_hoverIndex);
+            if (current == -1)
+                current = 0;
+
+            switch (Event.current.keyCode)
+            {
+                case KeyCode.DownArrow:
+                    current = (current + 1) % _filteredIndices.Count;
+                    _hoverIndex = _filteredIndices[current];
+                    EnsureItemVisible(_hoverIndex);
+                    Event.current.Use();
+                    break;
+
+                case KeyCode.UpArrow:
+                    current = (current - 1 + _filteredIndices.Count) % _filteredIndices.Count;
+                    _hoverIndex = _filteredIndices[current];
+                    EnsureItemVisible(_hoverIndex);
+                    Event.current.Use();
+                    break;
+
+                case KeyCode.Return:
+                case KeyCode.KeypadEnter:
+                    SetEnumValue(_hoverIndex);
+                    Close();
+                    Event.current.Use();
+                    break;
+
+                case KeyCode.Escape:
+                    Close();
+                    Event.current.Use();
+                    break;
+
+                case KeyCode.PageDown:
+                    current = Mathf.Min(current + 10, _filteredIndices.Count - 1);
+                    _hoverIndex = _filteredIndices[current];
+                    EnsureItemVisible(_hoverIndex);
+                    Event.current.Use();
+                    break;
+
+                case KeyCode.PageUp:
+                    current = Mathf.Max(current - 10, 0);
+                    _hoverIndex = _filteredIndices[current];
+                    EnsureItemVisible(_hoverIndex);
+                    Event.current.Use();
+                    break;
+            }
+        }
+
+        Vector2 _previousMousePosition = Vector2.zero;
+        private void HandleMouseMovement()
+        {
+            var mousePosition = Window.GetLocalMousePosition();
+            if (mousePosition != _previousMousePosition)
+                _previousMousePosition = mousePosition;
+            else return;
+
+            if (!_visibleBody.Contains(mousePosition))
+                return;
+
+            var searchFieldHeight = _isSearchFieldVisible ? LineHeight : 0;
+            var relativeY = mousePosition.y - searchFieldHeight + Window.ScrollPosition.y;
+            var newHoverIndex = Mathf.FloorToInt(relativeY / LineHeight);
+            if (newHoverIndex >= 0 && newHoverIndex < _filteredIndices.Count)
+            {
+                var actualIndex = _filteredIndices[newHoverIndex];
+                if (_hoverIndex != actualIndex)
+                {
+                    _hoverIndex = actualIndex;
+                    Repaint();
+                }
+            }
+        }
+
+        private void RefreshFilteredIndices()
+        {
+            _needsFilterRefresh = false;
+
+            if (string.IsNullOrEmpty(_currentSearchString))
+            {
+                if (_filteredIndices == null || _filteredIndices.Count != _enumNames.Length)
+                {
+                    _filteredIndices = new(_enumNames.Length);
+                    for (int i = 0; i < _enumNames.Length; i++)
+                        _filteredIndices.Add(i);
+                }
+                return;
+            }
+
+            string lowerSearch = _currentSearchString.ToLowerInvariant();
+            _filteredIndices = new();
+            for (int i = 0; i < _enumNames.Length; i++)
+                if (_enumNamesLower[i].Contains(lowerSearch) || _enumNamesNicifiedLower[i].Contains(lowerSearch))
+                    _filteredIndices.Add(i);
+
+            _hoverIndex = _filteredIndices.Count > 0 ? _filteredIndices[0] : -1;
+        }
+
+        private void ScrollToCurrentItem()
+        {
+            if (!_filteredIndices.Contains(_currentIndex))
+                return;
+
+            _hoverIndex = _currentIndex;
+            EnsureItemVisible(_currentIndex);
+        }
+
+        private void EnsureItemVisible(int enumIndex)
+        {
+            if (!_filteredIndices.Contains(enumIndex))
+                return;
+
+            int indexInList = _filteredIndices.IndexOf(enumIndex);
+            float itemPosition = indexInList * LineHeight;
+            float itemHeight = LineHeight;
+            float viewHeight = Window.Position.height - (_isSearchFieldVisible ? LineHeight : 0);
+
+            if (itemPosition < Window.ScrollPosition.y)
+                Window.ScrollPosition = new Vector2(Window.ScrollPosition.x, itemPosition);
+            else if (itemPosition + itemHeight > Window.ScrollPosition.y + viewHeight)
+                Window.ScrollPosition = new Vector2(Window.ScrollPosition.x, itemPosition - viewHeight + itemHeight);
+        }
+
+        private static readonly Color HighlightColorPro = new Color(0.24f, 0.37f, 0.58f);
+        private static readonly Color HighlightColorLight = new Color(0.22f, 0.44f, 0.9f);
+        private void DrawItemBackground(Rect position, bool highlighted)
+        {
+            if (!highlighted)
+                return;
+
+            Color color = EditorGUIUtility.isProSkin ? HighlightColorPro : HighlightColorLight;
+            EditorGUI.DrawRect(position, color);
+        }
+
+        private void DrawItemText(Rect position, string text, bool highlighted)
+        {
+            var style = new GUIStyle(EditorStyles.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                padding = new RectOffset(10, 0, 0, 0)
+            };
+
+            style.normal.textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor;
+            style.hover.textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor;
+            GUI.Label(position, text, style);
         }
     }
 }
