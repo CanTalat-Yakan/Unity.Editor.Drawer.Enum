@@ -7,8 +7,12 @@ using UnityEngine;
 namespace UnityEssentials
 {
     /// <summary>
-    /// Optimized popup window for selecting enumeration values with virtualization and search.
+    /// Provides functionality for displaying and interacting with a dropdown editor for selecting values from an
+    /// enumeration.
     /// </summary>
+    /// <remarks>The <see cref="EnumEditor"/> class allows users to select a value from an enumeration using a
+    /// dropdown interface. It supports features such as search filtering, keyboard navigation, and virtualization for
+    /// large enumerations.</remarks>
     public class EnumEditor
     {
         public EditorWindowDrawer Window;
