@@ -69,7 +69,7 @@ namespace UnityEssentials
 
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
-            var contentWidth = Mathf.Max(buttonPosition.width, 150f);
+            var contentWidth = Mathf.Max(buttonPosition.width, 75);
             var searchFieldHeight = editor._isSearchFieldVisible ? LineHeight : 0;
             var maxVisibleItems = Mathf.FloorToInt((availableHeight - searchFieldHeight) / LineHeight);
             var visibleItemCount = Mathf.Min(editor._filteredIndices.Count, maxVisibleItems);
