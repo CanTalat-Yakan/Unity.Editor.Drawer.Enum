@@ -126,8 +126,8 @@ namespace UnityEssentials
             _visibleBody = GUILayoutUtility.GetRect(1, totalHeight, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(false));
 
             // Calculate visible indices
-            _firstVisibleIndex = Mathf.FloorToInt(Window.ScrollPosition.y / LineHeight) - VirtualizationPadding;
-            _lastVisibleIndex = Mathf.CeilToInt((Window.ScrollPosition.y + _visibleBody.height) / LineHeight) + VirtualizationPadding;
+            _firstVisibleIndex = Mathf.FloorToInt(Window.BodyScrollPosition.y / LineHeight) - VirtualizationPadding;
+            _lastVisibleIndex = Mathf.CeilToInt((Window.BodyScrollPosition.y + _visibleBody.height) / LineHeight) + VirtualizationPadding;
             _firstVisibleIndex = Mathf.Clamp(_firstVisibleIndex, 0, _filteredIndices.Count - 1);
             _lastVisibleIndex = Mathf.Clamp(_lastVisibleIndex, 0, _filteredIndices.Count - 1);
 
@@ -229,7 +229,7 @@ namespace UnityEssentials
                 return;
 
             var searchFieldHeight = _isSearchFieldVisible ? LineHeight : 0;
-            var relativeY = mousePosition.y - searchFieldHeight + Window.ScrollPosition.y;
+            var relativeY = mousePosition.y - searchFieldHeight + Window.BodyScrollPosition.y;
             var newHoverIndex = Mathf.FloorToInt(relativeY / LineHeight);
             if (newHoverIndex >= 0 && newHoverIndex < _filteredIndices.Count)
             {
@@ -285,21 +285,18 @@ namespace UnityEssentials
             float itemHeight = LineHeight;
             float viewHeight = Window.Position.height - (_isSearchFieldVisible ? LineHeight : 0);
 
-            if (itemPosition < Window.ScrollPosition.y)
-                Window.ScrollPosition = new Vector2(Window.ScrollPosition.x, itemPosition);
-            else if (itemPosition + itemHeight > Window.ScrollPosition.y + viewHeight)
-                Window.ScrollPosition = new Vector2(Window.ScrollPosition.x, itemPosition - viewHeight + itemHeight);
+            if (itemPosition < Window.BodyScrollPosition.y)
+                Window.BodyScrollPosition = new Vector2(Window.BodyScrollPosition.x, itemPosition);
+            else if (itemPosition + itemHeight > Window.BodyScrollPosition.y + viewHeight)
+                Window.BodyScrollPosition = new Vector2(Window.BodyScrollPosition.x, itemPosition - viewHeight + itemHeight);
         }
 
-        private static readonly Color HighlightColorPro = new Color(0.24f, 0.37f, 0.58f);
-        private static readonly Color HighlightColorLight = new Color(0.22f, 0.44f, 0.9f);
         private void DrawItemBackground(Rect position, bool highlighted)
         {
             if (!highlighted)
                 return;
 
-            Color color = EditorGUIUtility.isProSkin ? HighlightColorPro : HighlightColorLight;
-            EditorGUI.DrawRect(position, color);
+            EditorGUI.DrawRect(position, Window.HighlightColor);
         }
 
         private void DrawItemText(Rect position, string text, bool highlighted)

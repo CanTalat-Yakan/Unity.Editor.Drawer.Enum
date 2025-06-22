@@ -23,16 +23,15 @@ namespace UnityEssentials
             {
                 var enumType = InspectorHookUtilities.GetEnumType(fieldInfo);
                 var currentValue = InspectorHookUtilities.GetCurrentValue(enumType, property);
-                var enumNames = Enum.GetNames(enumType);
 
-                DrawEnumPopup(position, property, label, enumType, currentValue, enumNames);
+                DrawEnumPopup(position, property, label, enumType, currentValue);
             }
             catch { EditorGUI.PropertyField(position, property, label); }
 
             EditorGUI.EndProperty();
         }
 
-        private void DrawEnumPopup(Rect position, SerializedProperty property, GUIContent label, Type enumType, Enum currentValue, string[] enumNames)
+        private void DrawEnumPopup(Rect position, SerializedProperty property, GUIContent label, Type enumType, Enum currentValue)
         {
             var labelPosition = new Rect(position);
             var buttonPosition = new Rect(position);
@@ -48,7 +47,7 @@ namespace UnityEssentials
             EnumPopup(buttonPosition, currentValue, enumType, property);
         }
 
-        public static void EnumPopup(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
+        public static void EnumPopup(Rect position, Type enumType, Enum currentValue, Action<Enum> onValueChanged)
         {
             var buttonText = ObjectNames.NicifyVariableName(currentValue.ToString());
 
@@ -61,19 +60,19 @@ namespace UnityEssentials
             }
 
             if (InspectorFocusHelper.IsControlFocused(controlID))
-                HandleKeyboardInput(position, currentValue, enumType, onValueChanged);
+                HandleKeyboardInput(position, enumType, currentValue, onValueChanged);
         }
 
         public static void EnumPopup(Rect position, Enum currentValue, Type enumType, SerializedProperty property) =>
-            EnumPopup(position, currentValue, enumType, (newValue) => InspectorHookUtilities.SetEnumValue(property, newValue));
+            EnumPopup(position, enumType, currentValue, (newValue) => InspectorHookUtilities.SetEnumValue(property, newValue));
 
         public static void EnumPopup<T>(Rect position, Enum currentValue, Action<T> onValueChanged) where T : Enum =>
-            EnumPopup(position, currentValue, typeof(T), (newValue) => onValueChanged((T)newValue));
+            EnumPopup(position, typeof(T), currentValue, (newValue) => onValueChanged((T)newValue));
 
         public static void EnumPopup<T>(Rect position, Enum currentValue) where T : Enum =>
             EnumPopup<T>(position, currentValue, (newValue) => currentValue = newValue);
 
-        private static void HandleKeyboardInput(Rect position, Enum currentValue, Type enumType, Action<Enum> onValueChanged)
+        private static void HandleKeyboardInput(Rect position, Type enumType, Enum currentValue, Action<Enum> onValueChanged)
         {
             if (Event.current.type == EventType.KeyDown)
             {
