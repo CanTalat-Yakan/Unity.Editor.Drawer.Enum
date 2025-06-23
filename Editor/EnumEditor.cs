@@ -66,6 +66,7 @@ namespace UnityEssentials
         public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
             var editor = new EnumEditor(enumType, currentValue, onValueSelected);
+            editor._ignoreFirstKeyDown = true;
 
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
@@ -161,9 +162,18 @@ namespace UnityEssentials
             Close();
         }
 
+        private bool _ignoreFirstKeyDown = true;
         private void HandleKeyboardInput()
         {
-            if (Event.current.type == EventType.KeyDown)
+            if (_ignoreFirstKeyDown)
+                if (Event.current.type == EventType.KeyUp)
+                {
+                    _ignoreFirstKeyDown = false;
+                    Event.current.Use();
+                    return;
+                }
+
+            if (Event.current.type != EventType.KeyDown)
                 return;
 
             if (_filteredIndices.Count == 0)
