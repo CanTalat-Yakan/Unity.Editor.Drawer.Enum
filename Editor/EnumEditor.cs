@@ -306,7 +306,7 @@ namespace UnityEssentials
             if (!highlighted)
                 return;
 
-            EditorGUI.DrawRect(position, Window.HighlightColor);
+            EditorGUI.DrawRect(position, EditorWindowDrawer.HighlightColor);
         }
 
         private void DrawItemText(Rect position, string text, bool highlighted)
