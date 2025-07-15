@@ -3,7 +3,7 @@ using System;
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
 public class EnumAttribute : Attribute
 {
-    public string ReferenceName { get; }
+    public readonly string ReferenceName;
 
     public EnumAttribute(string referenceName) =>
         ReferenceName = referenceName;
