@@ -19,20 +19,25 @@ namespace UnityEssentials
         public Action Repaint;
         public Action Close;
 
-        private readonly string[] _enumNames;
-        private readonly Array _enumValues;
+        private readonly string[] _names;
+        private readonly Array _values;
         private readonly int _currentIndex;
         private string _currentSearchString = string.Empty;
         private int _hoverIndex = -1;
-        private readonly Action<Enum> _onValueSelected;
+
+        // Callbacks for each mode
+        private readonly Action<Enum> _onEnumSelected;
+        private readonly Action<int, string> _onStringSelected;
+
+        private readonly bool _isEnumMode;
 
         private const float LineHeight = 22f;
         private const int ShowSearchFieldThreshold = 10;
         private const int VirtualizationPadding = 2;
 
-        private readonly string[] _enumNamesLower;
-        private readonly string[] _enumNamesNicified;
-        private readonly string[] _enumNamesNicifiedLower;
+        private string[] _enumNamesLower;
+        private string[] _enumNamesNicified;
+        private string[] _enumNamesNicifiedLower;
 
         private List<int> _filteredIndices;
         private bool _needsFilterRefresh = true;
@@ -40,32 +45,68 @@ namespace UnityEssentials
         private int _firstVisibleIndex = -1;
         private bool _hasInitialized;
 
-        public EnumEditor(Type enumType, Enum currentValue, Action<Enum> onValueSelected)
+        // Enum constructor
+        public EnumEditor(Array enumValues, string[] enumNames, Enum currentValue, Action<Enum> onValueSelected)
         {
-            _enumValues = Enum.GetValues(enumType);
-            _enumNames = Enum.GetNames(enumType);
-            _currentIndex = Array.IndexOf(_enumValues, currentValue);
+            _isEnumMode = true;
+            _values = enumValues;
+            _names = enumNames;
+            _currentIndex = Array.IndexOf(_values, currentValue);
             _hoverIndex = _currentIndex;
-            _onValueSelected = onValueSelected;
+            _onEnumSelected = onValueSelected;
 
-            int length = _enumNames.Length;
+            InitializeNames();
+        }
+
+        // String[] constructor
+        public EnumEditor(string[] options, int currentIndex, Action<int, string> onValueSelected)
+        {
+            _isEnumMode = false;
+            _names = options;
+            _values = null;
+            _currentIndex = currentIndex;
+            _hoverIndex = _currentIndex;
+            _onStringSelected = onValueSelected;
+
+            InitializeNames();
+        }
+
+        // Shared initialization logic
+        private void InitializeNames()
+        {
+            int length = _names.Length;
+
             _enumNamesLower = new string[length];
             _enumNamesNicified = new string[length];
             _enumNamesNicifiedLower = new string[length];
 
             for (int i = 0; i < length; i++)
             {
-                _enumNamesLower[i] = _enumNames[i].ToLowerInvariant();
-                _enumNamesNicified[i] = ObjectNames.NicifyVariableName(_enumNames[i]);
+                _enumNamesLower[i] = _names[i].ToLowerInvariant();
+                _enumNamesNicified[i] = ObjectNames.NicifyVariableName(_names[i]);
                 _enumNamesNicifiedLower[i] = _enumNamesNicified[i].ToLowerInvariant();
             }
 
             RefreshFilteredIndices();
         }
 
+        // Overload for enums
         public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
-            var editor = new EnumEditor(enumType, currentValue, onValueSelected);
+            var editor = new EnumEditor(Enum.GetValues(enumType), Enum.GetNames(enumType), currentValue, onValueSelected);
+            ShowAsDropDownInternal(buttonPosition, editor);
+        }
+
+        // Overload for string[]
+        public static void ShowAsDropDown(Rect buttonPosition, string[] options, int currentIndex, Action<int, string> onValueSelected)
+        {
+            var editor = new EnumEditor(options, currentIndex, onValueSelected);
+            ShowAsDropDownInternal(buttonPosition, editor);
+        }
+
+        // Internal implementation
+        private static void ShowAsDropDownInternal(Rect buttonPosition, EnumEditor editor)
+        {
             editor._ignoreFirstKeyDown = true;
 
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
@@ -95,7 +136,7 @@ namespace UnityEssentials
         public void PreProcess() =>
             HandleKeyboardInput();
 
-        private bool _isSearchFieldVisible => _enumNames.Length >= ShowSearchFieldThreshold;
+        private bool _isSearchFieldVisible => _names.Length >= ShowSearchFieldThreshold;
         public void Header()
         {
             if (!_isSearchFieldVisible)
@@ -157,7 +198,8 @@ namespace UnityEssentials
         private void SetEnumValue(int index)
         {
             InspectorHook.InvokePreProcess();
-            _onValueSelected?.Invoke((Enum)_enumValues.GetValue(index));
+            if (_isEnumMode) _onEnumSelected?.Invoke((Enum)_values.GetValue(index));
+            else _onStringSelected?.Invoke(index, _names[index]);
             InspectorHook.InvokePostProcess();
             Close();
         }
@@ -258,10 +300,10 @@ namespace UnityEssentials
 
             if (string.IsNullOrEmpty(_currentSearchString))
             {
-                if (_filteredIndices == null || _filteredIndices.Count != _enumNames.Length)
+                if (_filteredIndices == null || _filteredIndices.Count != _names.Length)
                 {
-                    _filteredIndices = new(_enumNames.Length);
-                    for (int i = 0; i < _enumNames.Length; i++)
+                    _filteredIndices = new(_names.Length);
+                    for (int i = 0; i < _names.Length; i++)
                         _filteredIndices.Add(i);
                 }
                 return;
@@ -269,7 +311,7 @@ namespace UnityEssentials
 
             string lowerSearch = _currentSearchString.ToLowerInvariant();
             _filteredIndices = new();
-            for (int i = 0; i < _enumNames.Length; i++)
+            for (int i = 0; i < _names.Length; i++)
                 if (_enumNamesLower[i].Contains(lowerSearch) || _enumNamesNicifiedLower[i].Contains(lowerSearch))
                     _filteredIndices.Add(i);
 
