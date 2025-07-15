@@ -173,6 +173,10 @@ namespace UnityEssentials
             _firstVisibleIndex = Mathf.Clamp(_firstVisibleIndex, 0, _filteredIndices.Count - 1);
             _lastVisibleIndex = Mathf.Clamp(_lastVisibleIndex, 0, _filteredIndices.Count - 1);
 
+            // Prevent out-of-range access if there are no items
+            if (_filteredIndices.Count == 0 || _firstVisibleIndex > _lastVisibleIndex)
+                return;
+
             // Only draw items within the visible range
             for (int i = _firstVisibleIndex; i <= _lastVisibleIndex; i++)
             {
@@ -277,7 +281,10 @@ namespace UnityEssentials
                 _previousMousePosition = mousePosition;
             else return;
 
-            if (!_visibleBody.Contains(mousePosition))
+            var visibleBody = _visibleBody;
+            visibleBody.y += _isSearchFieldVisible ? LineHeight : 0;
+
+            if (!visibleBody.Contains(mousePosition))
                 return;
 
             var searchFieldHeight = _isSearchFieldVisible ? LineHeight : 0;
