@@ -46,11 +46,11 @@ namespace UnityEssentials
         private bool _hasInitialized;
 
         // Enum constructor
-        public EnumEditor(Array enumValues, string[] enumNames, Enum currentValue, Action<Enum> onValueSelected)
+        public EnumEditor(string[] enumNames, Array enumValues, Enum currentValue, Action<Enum> onValueSelected)
         {
             _isEnumMode = true;
-            _values = enumValues;
             _names = enumNames;
+            _values = enumValues;
             _currentIndex = Array.IndexOf(_values, currentValue);
             _hoverIndex = _currentIndex;
             _onEnumSelected = onValueSelected;
@@ -93,7 +93,7 @@ namespace UnityEssentials
         // Overload for enums
         public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
         {
-            var editor = new EnumEditor(Enum.GetValues(enumType), Enum.GetNames(enumType), currentValue, onValueSelected);
+            var editor = new EnumEditor(Enum.GetNames(enumType), Enum.GetValues(enumType), currentValue, onValueSelected);
             ShowAsDropDownInternal(buttonPosition, editor);
         }
 
@@ -365,9 +365,9 @@ namespace UnityEssentials
                 alignment = TextAnchor.MiddleLeft,
                 padding = new RectOffset(10, 0, 0, 0)
             };
-
             style.normal.textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor;
             style.hover.textColor = highlighted ? Color.white : EditorStyles.label.normal.textColor;
+
             GUI.Label(position, text, style);
         }
     }
