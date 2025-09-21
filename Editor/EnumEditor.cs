@@ -117,7 +117,7 @@ namespace UnityEssentials
             var visibleItemCount = Mathf.Min(editor._filteredIndices.Count, maxVisibleItems);
             var contentHeight = searchFieldHeight + (visibleItemCount * LineHeight) + 2;
 
-            editor.Window = new EditorWindowDrawer()
+            editor.Window = ScriptableObject.CreateInstance<EditorWindowDrawer>()
                 .AddUpdate(editor.Update)
                 .SetPreProcess(editor.PreProcess)
                 .SetHeader(editor.Header)
