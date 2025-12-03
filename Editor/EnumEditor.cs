@@ -91,14 +91,17 @@ namespace UnityEssentials
         }
 
         // Overload for enums
-        public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue, Action<Enum> onValueSelected)
+        public static void ShowAsDropDown(Rect buttonPosition, Type enumType, Enum currentValue,
+            Action<Enum> onValueSelected)
         {
-            var editor = new EnumEditor(Enum.GetNames(enumType), Enum.GetValues(enumType), currentValue, onValueSelected);
+            var editor = new EnumEditor(Enum.GetNames(enumType), Enum.GetValues(enumType), currentValue,
+                onValueSelected);
             ShowAsDropDownInternal(buttonPosition, editor);
         }
 
         // Overload for string[]
-        public static void ShowAsDropDown(Rect buttonPosition, string[] options, int currentIndex, Action<int, string> onValueSelected)
+        public static void ShowAsDropDown(Rect buttonPosition, string[] options, int currentIndex,
+            Action<int, string> onValueSelected)
         {
             var editor = new EnumEditor(options, currentIndex, onValueSelected);
             ShowAsDropDownInternal(buttonPosition, editor);
@@ -110,6 +113,7 @@ namespace UnityEssentials
             editor._ignoreFirstKeyDown = true;
 
             var windowPosition = GUIUtility.GUIToScreenPoint(buttonPosition.position + new Vector2(0, buttonPosition.height));
+            windowPosition.y += 42; // Adjust for Unity's window title bar height
             var availableHeight = Screen.currentResolution.height - windowPosition.y;
             var contentWidth = Mathf.Max(buttonPosition.width, 75);
             var searchFieldHeight = editor._isSearchFieldVisible ? LineHeight : 0;
@@ -137,6 +141,7 @@ namespace UnityEssentials
             HandleKeyboardInput();
 
         private bool _isSearchFieldVisible => _names.Length >= ShowSearchFieldThreshold;
+
         public void Header()
         {
             if (!_isSearchFieldVisible)
@@ -158,6 +163,7 @@ namespace UnityEssentials
         }
 
         Rect _visibleBody = default;
+
         public void Body()
         {
             if (_needsFilterRefresh)
@@ -165,11 +171,13 @@ namespace UnityEssentials
 
             // Reserve space for the full list to ensure scrollbar appears
             float totalHeight = _filteredIndices.Count * LineHeight;
-            _visibleBody = GUILayoutUtility.GetRect(1, totalHeight, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(false));
+            _visibleBody = GUILayoutUtility.GetRect(1, totalHeight, GUILayout.ExpandWidth(true),
+                GUILayout.ExpandHeight(false));
 
             // Calculate visible indices
             _firstVisibleIndex = Mathf.FloorToInt(Window.BodyScrollPosition.y / LineHeight) - VirtualizationPadding;
-            _lastVisibleIndex = Mathf.CeilToInt((Window.BodyScrollPosition.y + _visibleBody.height) / LineHeight) + VirtualizationPadding;
+            _lastVisibleIndex = Mathf.CeilToInt((Window.BodyScrollPosition.y + _visibleBody.height) / LineHeight) +
+                                VirtualizationPadding;
             _firstVisibleIndex = Mathf.Clamp(_firstVisibleIndex, 0, _filteredIndices.Count - 1);
             _lastVisibleIndex = Mathf.Clamp(_lastVisibleIndex, 0, _filteredIndices.Count - 1);
 
@@ -181,7 +189,8 @@ namespace UnityEssentials
             for (int i = _firstVisibleIndex; i <= _lastVisibleIndex; i++)
             {
                 var index = _filteredIndices[i];
-                var position = new Rect(_visibleBody.x, _visibleBody.y + i * LineHeight, _visibleBody.width, LineHeight);
+                var position = new Rect(_visibleBody.x, _visibleBody.y + i * LineHeight, _visibleBody.width,
+                    LineHeight);
 
                 if (Event.current.type == EventType.Repaint)
                 {
@@ -209,6 +218,7 @@ namespace UnityEssentials
         }
 
         private bool _ignoreFirstKeyDown = true;
+
         private void HandleKeyboardInput()
         {
             if (_ignoreFirstKeyDown)
@@ -274,6 +284,7 @@ namespace UnityEssentials
         }
 
         Vector2 _previousMousePosition = Vector2.zero;
+
         private void HandleMouseMovement()
         {
             var mousePosition = Window.GetLocalMousePosition();
@@ -313,6 +324,7 @@ namespace UnityEssentials
                     for (int i = 0; i < _names.Length; i++)
                         _filteredIndices.Add(i);
                 }
+
                 return;
             }
 
@@ -347,7 +359,8 @@ namespace UnityEssentials
             if (itemPosition < Window.BodyScrollPosition.y)
                 Window.BodyScrollPosition = new Vector2(Window.BodyScrollPosition.x, itemPosition);
             else if (itemPosition + itemHeight > Window.BodyScrollPosition.y + viewHeight)
-                Window.BodyScrollPosition = new Vector2(Window.BodyScrollPosition.x, itemPosition - viewHeight + itemHeight);
+                Window.BodyScrollPosition =
+                    new Vector2(Window.BodyScrollPosition.x, itemPosition - viewHeight + itemHeight);
         }
 
         private void DrawItemBackground(Rect position, bool highlighted)
