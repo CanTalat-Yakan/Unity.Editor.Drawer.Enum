@@ -15,7 +15,7 @@ namespace UnityEssentials
     /// large enumerations.</remarks>
     public class EnumEditor
     {
-        public EditorWindowDrawer Window;
+        public EditorWindowBuilder Window;
         public Action Repaint;
         public Action Close;
 
@@ -121,7 +121,7 @@ namespace UnityEssentials
             var visibleItemCount = Mathf.Min(editor._filteredIndices.Count, maxVisibleItems);
             var contentHeight = searchFieldHeight + (visibleItemCount * LineHeight) + 2;
 
-            editor.Window = ScriptableObject.CreateInstance<EditorWindowDrawer>()
+            editor.Window = ScriptableObject.CreateInstance<EditorWindowBuilder>()
                 .AddUpdate(editor.Update)
                 .SetPreProcess(editor.PreProcess)
                 .SetHeader(editor.Header)
@@ -368,7 +368,7 @@ namespace UnityEssentials
             if (!highlighted)
                 return;
 
-            EditorGUI.DrawRect(position, EditorWindowDrawer.HighlightColor);
+            EditorGUI.DrawRect(position, EditorWindowBuilder.HighlightColor);
         }
 
         private void DrawItemText(Rect position, string text, bool highlighted)
