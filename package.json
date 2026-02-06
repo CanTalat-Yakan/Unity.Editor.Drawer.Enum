@@ -1,7 +1,7 @@
 {
-  "name": "com.unityessentials.enumdrawer",
-  "version": "1.0.0",
-  "displayName": "Unity Editor Drawer Enum",
+  "name": "com.unityessentials.editor.drawer.enum",
+  "version": "2.0.0",
+  "displayName": "Editor Drawer Enum",
   "description": "This is a part of the UnityEssentials Ecosystem",
   "unity": "6000.0",
   "unityRelease": "",
