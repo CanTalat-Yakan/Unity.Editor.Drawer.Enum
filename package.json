@@ -1,14 +1,14 @@
 {
   "name": "com.unityessentials.editor.drawer.enum",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "displayName": "Editor Drawer Enum",
   "description": "This is a part of the UnityEssentials Ecosystem",
   "unity": "6000.0",
   "unityRelease": "",
   "dependencies": {
-    "com.unityessentials.editor.drawer.windowbuilder": "2.0.0",
-    "com.unityessentials.editor.fetcher.mouseinput": "2.0.0",
-    "com.unityessentials.editor.hooks.inspector": "2.0.0"
+    "com.unityessentials.editor.drawer.windowbuilder": "~2.0.0",
+    "com.unityessentials.editor.fetcher.mouseinput": "~2.0.0",
+    "com.unityessentials.editor.hooks.inspector": "~2.0.0"
   },
   "keywords": [],
   "author": {
